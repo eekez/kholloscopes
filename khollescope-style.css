@@ -1,0 +1,289 @@
+
+  :root {
+    --vert: #2F4F3E;
+    --vert-clair: #4A7259;
+    --or: #C99A3D;
+    --or-clair: #E8C875;
+    --creme: #FAF7F0;
+    --creme-carte: #FFFFFF;
+    --encre: #1F2A24;
+    --gris: #6B7268;
+    --bordure: #E2DDD1;
+    --rouge-erreur: #B3543A;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--creme);
+    color: var(--encre);
+    font-family: 'Inter', system-ui, sans-serif;
+    min-height: 100vh;
+  }
+
+  .skip-link:focus {
+    position: fixed; top: 8px; left: 8px; z-index: 100;
+    background: var(--vert); color: white; padding: 8px 16px; border-radius: 4px;
+  }
+  .skip-link { position: absolute; left: -9999px; }
+
+  header {
+    background: var(--vert);
+    color: var(--creme);
+    padding: 2rem 1.25rem 2.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  header::after {
+    content: "";
+    position: absolute;
+    right: -40px; top: -40px;
+    width: 180px; height: 180px;
+    border-radius: 50%;
+    background: var(--vert-clair);
+    opacity: 0.4;
+  }
+  header h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: clamp(1.6rem, 5vw, 2.4rem);
+    margin: 0 0 0.25rem;
+    position: relative;
+    z-index: 1;
+  }
+  header p {
+    margin: 0;
+    color: var(--or-clair);
+    font-size: 0.95rem;
+    position: relative;
+    z-index: 1;
+  }
+
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 1.25rem;
+    padding-bottom: 4rem;
+  }
+
+  .panel {
+    background: var(--creme-carte);
+    border-radius: 14px;
+    padding: 1.5rem;
+    margin-top: -1.75rem;
+    position: relative;
+    z-index: 2;
+    box-shadow: 0 6px 24px rgba(47, 79, 62, 0.12);
+    margin-bottom: 1.5rem;
+  }
+
+  .profil-toggle {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+  }
+  .profil-toggle button {
+    flex: 1;
+    padding: 0.75rem;
+    border: 2px solid var(--bordure);
+    background: var(--creme-carte);
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--gris);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .profil-toggle button[aria-pressed="true"] {
+    border-color: var(--vert);
+    background: var(--vert);
+    color: white;
+  }
+  .profil-toggle button:focus-visible {
+    outline: 3px solid var(--or);
+    outline-offset: 2px;
+  }
+
+  .champ {
+    margin-bottom: 1rem;
+  }
+  .champ label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--gris);
+    margin-bottom: 0.35rem;
+  }
+  .champ select, .champ input {
+    width: 100%;
+    padding: 0.7rem 0.85rem;
+    border: 2px solid var(--bordure);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 1rem;
+    background: var(--creme-carte);
+    color: var(--encre);
+  }
+  .champ select:focus-visible, .champ input:focus-visible {
+    outline: none;
+    border-color: var(--or);
+    box-shadow: 0 0 0 3px rgba(201, 154, 61, 0.25);
+  }
+
+  .deux-colonnes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .btn-rechercher {
+    width: 100%;
+    padding: 0.85rem;
+    background: var(--or);
+    color: var(--vert);
+    border: none;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .btn-rechercher:hover { background: var(--or-clair); }
+  .btn-rechercher:focus-visible {
+    outline: 3px solid var(--vert);
+    outline-offset: 2px;
+  }
+  .btn-rechercher:disabled {
+    background: var(--bordure);
+    color: var(--gris);
+    cursor: not-allowed;
+  }
+
+  .etat {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: var(--gris);
+  }
+  .etat.erreur {
+    color: var(--rouge-erreur);
+  }
+  .etat svg { width: 40px; height: 40px; margin-bottom: 0.75rem; opacity: 0.6; }
+
+  .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid var(--bordure);
+    border-top-color: var(--vert);
+    border-radius: 50%;
+    margin: 0 auto 0.75rem;
+    animation: tourner 0.8s linear infinite;
+  }
+  @keyframes tourner { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    .spinner { animation: none; }
+  }
+
+  .resultats-entete {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 1rem;
+    padding: 0 0.25rem;
+  }
+  .resultats-entete h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 1.3rem;
+    margin: 0;
+    color: var(--vert);
+  }
+  .resultats-entete .compte {
+    font-size: 0.85rem;
+    color: var(--gris);
+  }
+
+  .billet {
+    background: var(--creme-carte);
+    border-radius: 12px;
+    margin-bottom: 0.85rem;
+    display: flex;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(47, 79, 62, 0.08);
+    border: 1px solid var(--bordure);
+  }
+  .billet.maths-tb1 {
+    border-left: 4px solid var(--or);
+  }
+  .billet-heure {
+    background: var(--vert);
+    color: white;
+    padding: 1rem 0.9rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 78px;
+    text-align: center;
+  }
+  .billet-heure .jour {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    opacity: 0.85;
+  }
+  .billet-heure .date {
+    font-family: 'Fraunces', serif;
+    font-size: 1.4rem;
+    font-weight: 600;
+    line-height: 1.1;
+  }
+  .billet-heure .mois {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    opacity: 0.85;
+  }
+  .billet-corps {
+    padding: 0.9rem 1rem;
+    flex: 1;
+    min-width: 0;
+  }
+  .billet-matiere {
+    font-weight: 700;
+    font-size: 1.02rem;
+    color: var(--encre);
+    margin-bottom: 0.25rem;
+  }
+  .billet-details {
+    font-size: 0.88rem;
+    color: var(--gris);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 0.9rem;
+  }
+  .billet-details span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+  .badge-maths {
+    display: inline-block;
+    background: var(--or-clair);
+    color: var(--vert);
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 100px;
+    margin-top: 0.35rem;
+  }
+
+  footer {
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--gris);
+    padding: 1.5rem;
+  }
+
+  @media (min-width: 640px) {
+    .billet-heure { min-width: 92px; }
+  }
