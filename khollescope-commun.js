@@ -144,9 +144,14 @@ function analyserCreneau(texte) {
 function parserDateFr(s) {
   if (!s) return null;
   s = s.trim();
-  // Format affiché habituel (DD/MM/YYYY)
-  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (m) return new Date(parseInt(m[3], 10), parseInt(m[2], 10) - 1, parseInt(m[1], 10));
+  // Format affiché habituel : JJ/MM/AAAA ou J/M/AA (Google Sheets peut omettre les zéros
+  // de tête et abréger l'année sur 2 chiffres selon le format régional du navigateur).
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
+  if (m) {
+    let annee = parseInt(m[3], 10);
+    if (m[3].length === 2) annee += 2000; // "26" -> 2026 (toujours années 2000+ dans ce contexte)
+    return new Date(annee, parseInt(m[2], 10) - 1, parseInt(m[1], 10));
+  }
   // Format brut gviz quand la valeur formatée n'est pas disponible : Date(2026,8,7)
   const m2 = s.match(/^Date\((\d{4}),(\d{1,2}),(\d{1,2})/);
   if (m2) return new Date(parseInt(m2[1], 10), parseInt(m2[2], 10), parseInt(m2[3], 10));
