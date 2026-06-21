@@ -44,7 +44,6 @@
   Les données proviennent du colloscope tenu par l'établissement — en cas de doute sur un créneau, vérifier auprès du secrétariat ou du professeur concerné.
 </footer>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="khollescope-commun.js"></script>
 <script>
 (function () {
@@ -74,10 +73,27 @@
       const items = extraireCreneaux(rows, CLASSE_FIXE, { colonneIndex: 4 + groupe - 1 });
       afficherResultats(zoneResultats, items, CLASSE_FIXE + ' — Groupe ' + groupe,
         { afficherClasseGroupe: false, afficherNomProf: true });
+      afficherDebugSiActive(rows, 4 + groupe - 1);
     } catch (e) {
       afficherErreur(zoneResultats, 'Impossible de charger le planning pour le moment. Vérifiez votre connexion, ou réessayez plus tard.');
       console.error(e);
     }
+  }
+
+  // Mode debug : ajouter ?debug=1 à la fin de l'URL de la page pour afficher,
+  // sous les résultats, les données brutes reçues de Google Sheets (sans console).
+  function afficherDebugSiActive(rows, colonneIndex) {
+    if (new URLSearchParams(window.location.search).get('debug') !== '1') return;
+    let html = '<div style="margin-top:2rem;padding:1rem;background:#fff;border:2px dashed #C99A3D;border-radius:8px;font-family:monospace;font-size:0.75rem;white-space:pre-wrap;word-break:break-word;">';
+    html += '<strong>MODE DEBUG — lignes brutes reçues (colonne demandée : index ' + colonneIndex + ')</strong>\n\n';
+    rows.forEach((row, i) => {
+      if (!row || row.length < 5) return;
+      const cellule = row[colonneIndex];
+      html += 'Ligne ' + i + ' | A=' + JSON.stringify(row[0]) + ' B=' + JSON.stringify(row[1]) +
+        ' | colonne demandée=' + JSON.stringify(cellule) + '\n';
+    });
+    html += '</div>';
+    zoneResultats.innerHTML += html;
   }
 
   btnRechercher.addEventListener('click', rechercher);
