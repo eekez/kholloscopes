@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mon planning de khôlles — Professeurs — Le Chesnoy</title>
+
+<!-- ============================================================================
+     CONFIGURATION — à modifier une fois le classeur publié sur le web
+     (Fichier > Partager > Publier sur le web > sélectionner les 4 onglets élèves)
+     ============================================================================ -->
+<script>
+  const SHEET_ID = "REMPLACER_PAR_L_IDENTIFIANT_DU_GOOGLE_SHEET";
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="khollescope-style.css">
+</head>
+<body>
+
+<a href="#contenu" class="skip-link">Aller au contenu principal</a>
+
+<header>
+  <h1>Mon planning de khôlles</h1>
+  <p>Professeurs — Lycée Le Chesnoy — Année 2026-2027</p>
+</header>
+
+<main id="contenu">
+  <section class="panel" aria-label="Rechercher mon planning">
+    <div class="champ">
+      <label for="input-nom-prof">Votre nom</label>
+      <input type="text" id="input-nom-prof" placeholder="Ex : Laplanche">
+    </div>
+    <button type="button" class="btn-rechercher" id="btn-rechercher">Afficher mon planning</button>
+  </section>
+
+  <section id="zone-resultats" aria-live="polite"></section>
+</main>
+
+<footer>
+  Les données proviennent du colloscope tenu par l'établissement — en cas d'écart constaté, merci de le signaler pour correction.
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="khollescope-commun.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  const inputNomProf = document.getElementById('input-nom-prof');
+  const btnRechercher = document.getElementById('btn-rechercher');
+  const zoneResultats = document.getElementById('zone-resultats');
+
+  async function rechercher() {
+    const nom = inputNomProf.value.trim();
+    if (!nom) {
+      afficherErreur(zoneResultats, 'Merci de saisir un nom.');
+      return;
+    }
+    afficherChargement(zoneResultats);
+    try {
+      const toutes = [];
+      for (const classe of Object.keys(ONGLETS)) {
+        const rows = await chargerOnglet(ONGLETS[classe]);
+        const items = extraireCreneaux(rows, classe, { nomRecherche: nom });
+        toutes.push(...items);
+      }
+      afficherResultats(zoneResultats, toutes, 'Planning de ' + nom,
+        { afficherClasseGroupe: true, afficherNomProf: false });
+    } catch (e) {
+      afficherErreur(zoneResultats, 'Impossible de charger le planning pour le moment. Vérifiez votre connexion, ou réessayez plus tard.');
+      console.error(e);
+    }
+  }
+
+  btnRechercher.addEventListener('click', rechercher);
+  inputNomProf.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') rechercher();
+  });
+
+  if (SHEET_ID.startsWith('REMPLACER')) {
+    afficherErreur(zoneResultats, 'Configuration manquante : l\'identifiant du Google Sheet n\'a pas encore été renseigné dans le code (variable SHEET_ID en haut du fichier).');
+  }
+})();
+</script>
+
+</body>
+</html>

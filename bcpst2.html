@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mes khôlles — BCPST2 — Le Chesnoy</title>
+
+<!-- ============================================================================
+     CONFIGURATION — à modifier une fois le classeur publié sur le web
+     (Fichier > Partager > Publier sur le web > sélectionner l'onglet "BCPST2 (élèves)")
+     ============================================================================ -->
+<script>
+  const SHEET_ID = "REMPLACER_PAR_L_IDENTIFIANT_DU_GOOGLE_SHEET";
+  const CLASSE_FIXE = "BCPST2";
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="khollescope-style.css">
+</head>
+<body>
+
+<a href="#contenu" class="skip-link">Aller au contenu principal</a>
+
+<header>
+  <h1>Mes khôlles</h1>
+  <p>BCPST2 — Lycée Le Chesnoy — Année 2026-2027</p>
+</header>
+
+<main id="contenu">
+  <section class="panel" aria-label="Rechercher mon planning">
+    <div class="champ">
+      <label for="select-groupe-eleve">Mon groupe</label>
+      <select id="select-groupe-eleve"></select>
+    </div>
+    <button type="button" class="btn-rechercher" id="btn-rechercher">Afficher mon planning</button>
+  </section>
+
+  <section id="zone-resultats" aria-live="polite"></section>
+</main>
+
+<footer>
+  Les données proviennent du colloscope tenu par l'établissement — en cas de doute sur un créneau, vérifier auprès du secrétariat ou du professeur concerné.
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="khollescope-commun.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  const selectGroupeEleve = document.getElementById('select-groupe-eleve');
+  const btnRechercher = document.getElementById('btn-rechercher');
+  const zoneResultats = document.getElementById('zone-resultats');
+
+  function peuplerGroupes() {
+    const n = N_GROUPES[CLASSE_FIXE] || 8;
+    selectGroupeEleve.innerHTML = '';
+    for (let i = 1; i <= n; i++) {
+      const opt = document.createElement('option');
+      opt.value = String(i);
+      opt.textContent = 'Groupe ' + i;
+      selectGroupeEleve.appendChild(opt);
+    }
+  }
+  peuplerGroupes();
+
+  async function rechercher() {
+    const groupe = parseInt(selectGroupeEleve.value, 10);
+    afficherChargement(zoneResultats);
+    try {
+      const rows = await chargerOnglet(ONGLETS[CLASSE_FIXE]);
+      const items = extraireCreneaux(rows, CLASSE_FIXE, { colonneIndex: 4 + groupe - 1 });
+      afficherResultats(zoneResultats, items, CLASSE_FIXE + ' — Groupe ' + groupe,
+        { afficherClasseGroupe: false, afficherNomProf: true });
+    } catch (e) {
+      afficherErreur(zoneResultats, 'Impossible de charger le planning pour le moment. Vérifiez votre connexion, ou réessayez plus tard.');
+      console.error(e);
+    }
+  }
+
+  btnRechercher.addEventListener('click', rechercher);
+
+  if (SHEET_ID.startsWith('REMPLACER')) {
+    afficherErreur(zoneResultats, 'Configuration manquante : l\'identifiant du Google Sheet n\'a pas encore été renseigné dans le code (variable SHEET_ID en haut du fichier).');
+  }
+})();
+</script>
+
+</body>
+</html>
