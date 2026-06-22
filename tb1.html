@@ -5,12 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mes khôlles — TB1 — Le Chesnoy</title>
 
+<!-- PWA : permet à l'élève d'installer cette page comme une app sur son téléphone
+     (icône sur l'écran d'accueil), sans passer par un store. -->
+<link rel="manifest" href="manifest-tb1.json">
+<meta name="theme-color" content="#2F4F3E">
+<link rel="apple-touch-icon" href="icons/icone-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Khôlles TB1">
+
 <!-- ============================================================================
      CONFIGURATION — à modifier une fois le classeur publié sur le web
      (Fichier > Partager > Publier sur le web > sélectionner l'onglet "TB1 (élèves)")
      ============================================================================ -->
 <script>
-  const SHEET_ID = "1jxBFq5x4I5X9-W7dQ_y7QSduLn1nvqz15pPeeyQqyg8";
+  const SHEET_ID = "REMPLACER_PAR_L_IDENTIFIANT_DU_GOOGLE_SHEET";
   const CLASSE_FIXE = "TB1";
 </script>
 
@@ -69,8 +78,11 @@
     const groupe = parseInt(selectGroupeEleve.value, 10);
     afficherChargement(zoneResultats);
     try {
-      const rows = await chargerOnglet(ONGLETS[CLASSE_FIXE]);
-      const items = extraireCreneaux(rows, CLASSE_FIXE, { colonneIndex: 4 + groupe - 1 });
+      const [rows, pivot] = await Promise.all([
+        chargerOnglet(ONGLETS[CLASSE_FIXE]),
+        chargerPivotMathsTB1(),
+      ]);
+      const items = extraireCreneaux(rows, CLASSE_FIXE, { colonneIndex: 4 + groupe - 1, pivotMathsTB1: pivot });
       afficherResultats(zoneResultats, items, CLASSE_FIXE + ' — Groupe ' + groupe,
         { afficherClasseGroupe: false, afficherNomProf: true });
       afficherDebugSiActive(rows, 4 + groupe - 1);
@@ -102,6 +114,24 @@
     afficherErreur(zoneResultats, 'Configuration manquante : l\'identifiant du Google Sheet n\'a pas encore été renseigné dans le code (variable SHEET_ID en haut du fichier).');
   }
 })();
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {
+      // Échec silencieux : l'app reste utilisable normalement dans le navigateur,
+      // seule l'installation sur l'écran d'accueil pourrait ne pas être proposée.
+    });
+  }
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {
+      // Échec silencieux : l'app reste utilisable normalement dans le navigateur,
+      // seule l'installation sur l'écran d'accueil pourrait ne pas être proposée.
+    });
+  }
 </script>
 
 </body>

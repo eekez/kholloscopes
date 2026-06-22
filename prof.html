@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mon planning de khôlles — Professeurs — Le Chesnoy</title>
 
+<!-- PWA : permet d'installer cette page comme une app sur son téléphone
+     (icône sur l'écran d'accueil), sans passer par un store. -->
+<link rel="manifest" href="manifest-prof.json">
+<meta name="theme-color" content="#2F4F3E">
+<link rel="apple-touch-icon" href="icons/icone-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Khôlles Profs">
+
 <!-- ============================================================================
      CONFIGURATION — à modifier une fois le classeur publié sur le web
      (Fichier > Partager > Publier sur le web > sélectionner les 4 onglets élèves)
@@ -43,7 +52,6 @@
   Les données proviennent du colloscope tenu par l'établissement — en cas d'écart constaté, merci de le signaler pour correction.
 </footer>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="khollescope-commun.js"></script>
 <script>
 (function () {
@@ -61,10 +69,11 @@
     }
     afficherChargement(zoneResultats);
     try {
+      const pivot = await chargerPivotMathsTB1();
       const toutes = [];
       for (const classe of Object.keys(ONGLETS)) {
         const rows = await chargerOnglet(ONGLETS[classe]);
-        const items = extraireCreneaux(rows, classe, { nomRecherche: nom });
+        const items = extraireCreneaux(rows, classe, { nomRecherche: nom, pivotMathsTB1: pivot });
         toutes.push(...items);
       }
       afficherResultats(zoneResultats, toutes, 'Planning de ' + nom,
@@ -84,6 +93,24 @@
     afficherErreur(zoneResultats, 'Configuration manquante : l\'identifiant du Google Sheet n\'a pas encore été renseigné dans le code (variable SHEET_ID en haut du fichier).');
   }
 })();
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {
+      // Échec silencieux : l'app reste utilisable normalement dans le navigateur,
+      // seule l'installation sur l'écran d'accueil pourrait ne pas être proposée.
+    });
+  }
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {
+      // Échec silencieux : l'app reste utilisable normalement dans le navigateur,
+      // seule l'installation sur l'écran d'accueil pourrait ne pas être proposée.
+    });
+  }
 </script>
 
 </body>

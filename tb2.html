@@ -5,12 +5,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mes khôlles — TB2 — Le Chesnoy</title>
 
+<!-- PWA : permet d'installer cette page comme une app sur son téléphone
+     (icône sur l'écran d'accueil), sans passer par un store. -->
+<link rel="manifest" href="manifest-tb2.json">
+<meta name="theme-color" content="#2F4F3E">
+<link rel="apple-touch-icon" href="icons/icone-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="TB2">
+
 <!-- ============================================================================
      CONFIGURATION — à modifier une fois le classeur publié sur le web
      (Fichier > Partager > Publier sur le web > sélectionner l'onglet "TB2 (élèves)")
      ============================================================================ -->
 <script>
-  const SHEET_ID = "1jxBFq5x4I5X9-W7dQ_y7QSduLn1nvqz15pPeeyQqyg8";
+  const SHEET_ID = "REMPLACER_PAR_L_IDENTIFIANT_DU_GOOGLE_SHEET";
   const CLASSE_FIXE = "TB2";
 </script>
 
@@ -44,7 +53,6 @@
   Les données proviennent du colloscope tenu par l'établissement — en cas de doute sur un créneau, vérifier auprès du secrétariat ou du professeur concerné.
 </footer>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="khollescope-commun.js"></script>
 <script>
 (function () {
@@ -86,6 +94,24 @@
     afficherErreur(zoneResultats, 'Configuration manquante : l\'identifiant du Google Sheet n\'a pas encore été renseigné dans le code (variable SHEET_ID en haut du fichier).');
   }
 })();
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {
+      // Échec silencieux : l'app reste utilisable normalement dans le navigateur,
+      // seule l'installation sur l'écran d'accueil pourrait ne pas être proposée.
+    });
+  }
+</script>
+
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js').catch(() => {
+      // Échec silencieux : l'app reste utilisable normalement dans le navigateur,
+      // seule l'installation sur l'écran d'accueil pourrait ne pas être proposée.
+    });
+  }
 </script>
 
 </body>

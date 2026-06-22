@@ -18,6 +18,26 @@ const ONGLETS = {
   BCPST2: "BCPST2 (élèves)",
 };
 
+const ONGLET_BILAN_PIVOT = "Bilan lot 1";
+const CELLULE_PIVOT = { ligne: 12, colonne: 11 }; // L13 (0-indexé : ligne 12, colonne L=11)
+
+/**
+ * Récupère le numéro de semaine pivot (Bilan lot 1!L13) à partir duquel les khôlles
+ * de maths en TB1 durent 1h30 au lieu de 0h45. Retourne null si l'onglet n'est pas
+ * publié ou si la valeur est absente — dans ce cas, toutes les khôlles comptent 1h.
+ */
+async function chargerPivotMathsTB1() {
+  try {
+    const rows = await chargerOnglet(ONGLET_BILAN_PIVOT);
+    const valeur = rows[CELLULE_PIVOT.ligne] && rows[CELLULE_PIVOT.ligne][CELLULE_PIVOT.colonne];
+    const n = parseInt(valeur, 10);
+    return isNaN(n) ? null : n;
+  } catch (e) {
+    console.warn('Pivot Maths TB1 indisponible, durée fixée à 1h pour toutes les khôlles.', e);
+    return null;
+  }
+}
+
 const N_GROUPES = { TB1: 8, TB2: 12, BCPST1: 12, BCPST2: 10 };
 
 let _compteurCallback = 0;
@@ -169,15 +189,20 @@ function formatBilletDate(date) {
 /**
  * Construit la liste des créneaux à partir des lignes CSV d'un onglet élève,
  * pour UN groupe (options.colonneIndex) ou en cherchant un NOM dans toutes les
- * colonnes (options.nomRecherche).
+ * colonnes (options.nomRecherche). options.pivotMathsTB1 (numéro de semaine,
+ * optionnel) permet de calculer la durée exacte des khôlles de maths en TB1.
  */
 function extraireCreneaux(rows, classeNom, options) {
   const resultats = [];
   let derniereDateConnue = null;
+  let dernierNumeroSemaine = null;
 
   for (let r = 0; r < rows.length; r++) {
     const row = rows[r];
     if (!row || row.length < 5) continue;
+
+    const numSemaineCell = parseInt(row[0], 10);
+    if (!isNaN(numSemaineCell)) dernierNumeroSemaine = numSemaineCell;
 
     const dateCell = parserDateFr(row[1]);
     if (dateCell) derniereDateConnue = dateCell;
@@ -202,15 +227,37 @@ function extraireCreneaux(rows, classeNom, options) {
         if (!motif.test(creneau.nom)) continue;
       }
 
-      resultats.push({
+      const item = {
         date: derniereDateConnue,
+        numeroSemaine: dernierNumeroSemaine,
         groupeIndex: c - 4 + 1,
         classe: classeNom,
         ...creneau,
-      });
+      };
+      item.duree = calculerDuree(item, options.pivotMathsTB1);
+      resultats.push(item);
     }
   }
   return resultats;
+}
+
+/**
+ * Durée d'une khôlle en heures : 1h par défaut, sauf Maths en TB1 où elle dépend
+ * de la semaine pivot (0h45 avant, 1h30 à partir de cette semaine), reproduisant
+ * la même règle que le fichier Excel (Bilan lot 1!L13).
+ */
+function calculerDuree(item, pivotMathsTB1) {
+  if (!estMathsTB1(item) || !pivotMathsTB1 || !item.numeroSemaine) return 1;
+  return item.numeroSemaine < pivotMathsTB1 ? 0.75 : 1.5;
+}
+
+function formatDuree(heures) {
+  const minutes = Math.round(heures * 60);
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return m + ' min';
+  if (m === 0) return h + 'h';
+  return h + 'h' + String(m).padStart(2, '0');
 }
 
 function estMathsTB1(item) {
@@ -258,11 +305,12 @@ function afficherResultats(zoneResultats, items, sousTitre, options) {
       '<div class="billet-matiere">' + escapeHtml(item.matiere || 'Khôlle') + '</div>' +
       '<div class="billet-details">' +
       '<span>🕐 ' + escapeHtml(item.horaireLigne || '') + '</span>' +
+      (item.duree ? '<span>⏱ ' + formatDuree(item.duree) + '</span>' : '') +
       (item.salle ? '<span>📍 ' + escapeHtml(item.salle) + '</span>' : '') +
       (afficherClasseGroupe && item.classe ? '<span>' + escapeHtml(item.classe) + ' – Groupe ' + item.groupeIndex + '</span>' : '') +
       (afficherNomProf && item.nom ? '<span>👤 ' + escapeHtml(item.nom) + '</span>' : '') +
       '</div>' +
-      (isMathsTB1 ? '<span class="badge-maths">Durée variable selon la semaine</span>' : '') +
+      (isMathsTB1 && !item.duree ? '<span class="badge-maths">Durée variable selon la semaine</span>' : '') +
       '</div></article>';
   }
   zoneResultats.innerHTML = html;
