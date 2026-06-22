@@ -22,8 +22,7 @@ const ONGLET_EXPORT_WEB = "Export Web";
 
 // Emplacements des 3 zones dans l'onglet "Export Web" (0-indexé : ligne 1 = index 0).
 const ZONE_PIVOT = { ligne: 0, colonne: 0 }; // A1
-const ZONE_HEURES = { premiereLigne: 4, derniereLigne: 63, colNom: 0, colsLots: [1, 2, 3, 4] }; // A5:E64
-const ZONE_GROUPES = { premiereLigne: 69, derniereLigne: 108, colClasse: 0, colGroupe: 1, colEleves: 2 }; // A70:C109
+const CLASSES_CONNUES = ['TB1', 'TB2', 'BCPST1', 'BCPST2'];
 
 /**
  * Charge l'intégralité de l'onglet "Export Web" et en extrait les 3 informations
@@ -31,6 +30,12 @@ const ZONE_GROUPES = { premiereLigne: 69, derniereLigne: 108, colClasse: 0, colG
  * la liste des groupes non vides (pour ne pas afficher de khôlle sur un groupe
  * sans élève). Cet onglet est le SEUL, avec les 4 onglets élèves, à devoir être
  * publié sur le web — aucun autre onglet du classeur n'a besoin de l'être.
+ *
+ * IMPORTANT : Google Sheets (gviz) supprime de la réponse toute ligne ENTIÈREMENT
+ * vide, ce qui décale silencieusement les numéros de ligne dès qu'une ligne
+ * intermédiaire n'a pas encore été remplie (ex: un groupe sans élève cette année,
+ * ou un khôlleur sans heures sur un lot). On ne peut donc pas se fier à une plage
+ * de lignes fixe : chaque ligne est identifiée par son CONTENU, pas sa position.
  */
 async function chargerExportWeb() {
   const rows = await chargerOnglet(ONGLET_EXPORT_WEB);
@@ -39,23 +44,25 @@ async function chargerExportWeb() {
   const pivot = parseInt(pivotBrut, 10);
 
   const heuresParNom = {};
-  for (let r = ZONE_HEURES.premiereLigne; r <= ZONE_HEURES.derniereLigne; r++) {
-    const row = rows[r];
-    if (!row) continue;
-    const nom = row[ZONE_HEURES.colNom];
-    if (!nom || !nom.trim()) continue;
-    heuresParNom[nom.trim()] = ZONE_HEURES.colsLots.map(c => parseFloat(row[c]) || 0);
-  }
-
   const groupesNonVides = new Set();
-  for (let r = ZONE_GROUPES.premiereLigne; r <= ZONE_GROUPES.derniereLigne; r++) {
+
+  for (let r = 1; r < rows.length; r++) {
     const row = rows[r];
-    if (!row) continue;
-    const classe = row[ZONE_GROUPES.colClasse];
-    const groupe = row[ZONE_GROUPES.colGroupe];
-    const eleves = row[ZONE_GROUPES.colEleves];
-    if (classe && groupe && eleves && eleves.trim()) {
-      groupesNonVides.add(classe.trim() + '|' + parseInt(groupe, 10));
+    if (!row || row.length === 0) continue;
+    const col0 = (row[0] || '').toString().trim();
+    if (!col0) continue;
+
+    if (CLASSES_CONNUES.includes(col0)) {
+      // Ligne de la Zone "groupes" : Classe | Groupe | Élèves
+      const groupe = row[1];
+      const eleves = row[2];
+      if (groupe && eleves && eleves.toString().trim()) {
+        groupesNonVides.add(col0 + '|' + parseInt(groupe, 10));
+      }
+    } else if (col0 !== 'Nom' && col0 !== 'Classe') {
+      // Ligne de la Zone "heures" : Nom | Lot1 | Lot2 | Lot3 | Lot4
+      // (on exclut les lignes d'en-tête "Nom"/"Classe" tapées manuellement)
+      heuresParNom[col0] = [1, 2, 3, 4].map(c => parseFloat(row[c]) || 0);
     }
   }
 
