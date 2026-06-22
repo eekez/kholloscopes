@@ -18,24 +18,61 @@ const ONGLETS = {
   BCPST2: "BCPST2 (élèves)",
 };
 
-const ONGLET_BILAN_PIVOT = "Bilan lot 1";
-const CELLULE_PIVOT = { ligne: 12, colonne: 11 }; // L13 (0-indexé : ligne 12, colonne L=11)
+const ONGLET_EXPORT_WEB = "Export Web";
+
+// Emplacements des 3 zones dans l'onglet "Export Web" (0-indexé : ligne 1 = index 0).
+const ZONE_PIVOT = { ligne: 0, colonne: 0 }; // A1
+const ZONE_HEURES = { premiereLigne: 4, derniereLigne: 63, colNom: 0, colsLots: [1, 2, 3, 4] }; // A5:E64
+const ZONE_GROUPES = { premiereLigne: 69, derniereLigne: 108, colClasse: 0, colGroupe: 1, colEleves: 2 }; // A70:C109
 
 /**
- * Récupère le numéro de semaine pivot (Bilan lot 1!L13) à partir duquel les khôlles
- * de maths en TB1 durent 1h30 au lieu de 0h45. Retourne null si l'onglet n'est pas
- * publié ou si la valeur est absente — dans ce cas, toutes les khôlles comptent 1h.
+ * Charge l'intégralité de l'onglet "Export Web" et en extrait les 3 informations
+ * utiles à prof.html : le pivot Maths TB1, les heures par khôlleur et par lot, et
+ * la liste des groupes non vides (pour ne pas afficher de khôlle sur un groupe
+ * sans élève). Cet onglet est le SEUL, avec les 4 onglets élèves, à devoir être
+ * publié sur le web — aucun autre onglet du classeur n'a besoin de l'être.
  */
-async function chargerPivotMathsTB1() {
-  try {
-    const rows = await chargerOnglet(ONGLET_BILAN_PIVOT);
-    const valeur = rows[CELLULE_PIVOT.ligne] && rows[CELLULE_PIVOT.ligne][CELLULE_PIVOT.colonne];
-    const n = parseInt(valeur, 10);
-    return isNaN(n) ? null : n;
-  } catch (e) {
-    console.warn('Pivot Maths TB1 indisponible, durée fixée à 1h pour toutes les khôlles.', e);
-    return null;
+async function chargerExportWeb() {
+  const rows = await chargerOnglet(ONGLET_EXPORT_WEB);
+
+  const pivotBrut = rows[ZONE_PIVOT.ligne] && rows[ZONE_PIVOT.ligne][ZONE_PIVOT.colonne];
+  const pivot = parseInt(pivotBrut, 10);
+
+  const heuresParNom = {};
+  for (let r = ZONE_HEURES.premiereLigne; r <= ZONE_HEURES.derniereLigne; r++) {
+    const row = rows[r];
+    if (!row) continue;
+    const nom = row[ZONE_HEURES.colNom];
+    if (!nom || !nom.trim()) continue;
+    heuresParNom[nom.trim()] = ZONE_HEURES.colsLots.map(c => parseFloat(row[c]) || 0);
   }
+
+  const groupesNonVides = new Set();
+  for (let r = ZONE_GROUPES.premiereLigne; r <= ZONE_GROUPES.derniereLigne; r++) {
+    const row = rows[r];
+    if (!row) continue;
+    const classe = row[ZONE_GROUPES.colClasse];
+    const groupe = row[ZONE_GROUPES.colGroupe];
+    const eleves = row[ZONE_GROUPES.colEleves];
+    if (classe && groupe && eleves && eleves.trim()) {
+      groupesNonVides.add(classe.trim() + '|' + parseInt(groupe, 10));
+    }
+  }
+
+  return {
+    pivot: isNaN(pivot) ? null : pivot,
+    heuresParNom,
+    groupesNonVides,
+  };
+}
+
+function groupeEstNonVide(donneesExportWeb, classe, groupeIndex) {
+  return donneesExportWeb.groupesNonVides.has(classe + '|' + groupeIndex);
+}
+
+function formatHeuresParLot(heures) {
+  if (!heures) return '';
+  return heures.map((h, i) => 'Lot ' + (i + 1) + ' : ' + formatDuree(h)).join(' · ');
 }
 
 const N_GROUPES = { TB1: 8, TB2: 12, BCPST1: 12, BCPST2: 10 };
@@ -196,6 +233,7 @@ function extraireCreneaux(rows, classeNom, options) {
   const resultats = [];
   let derniereDateConnue = null;
   let dernierNumeroSemaine = null;
+  let dernierLibelleSemaine = null;
 
   for (let r = 0; r < rows.length; r++) {
     const row = rows[r];
@@ -203,6 +241,10 @@ function extraireCreneaux(rows, classeNom, options) {
 
     const numSemaineCell = parseInt(row[0], 10);
     if (!isNaN(numSemaineCell)) dernierNumeroSemaine = numSemaineCell;
+
+    if (row[3] && row[3].trim() && !row[3].toUpperCase().includes('VACANCES')) {
+      dernierLibelleSemaine = row[3].trim();
+    }
 
     const dateCell = parserDateFr(row[1]);
     if (dateCell) derniereDateConnue = dateCell;
@@ -217,6 +259,12 @@ function extraireCreneaux(rows, classeNom, options) {
       if (!texte || !texte.trim()) continue;
       if (texte.toUpperCase().includes('VACANCES')) continue;
 
+      const groupeIndex = c - 4 + 1;
+
+      if (options.exportWeb && !groupeEstNonVide(options.exportWeb, classeNom, groupeIndex)) {
+        continue; // groupe sans élève : on ne signale pas ce créneau au prof
+      }
+
       const creneau = analyserCreneau(texte);
       if (!creneau) continue;
 
@@ -230,7 +278,8 @@ function extraireCreneaux(rows, classeNom, options) {
       const item = {
         date: derniereDateConnue,
         numeroSemaine: dernierNumeroSemaine,
-        groupeIndex: c - 4 + 1,
+        libelleSemaine: dernierLibelleSemaine,
+        groupeIndex: groupeIndex,
         classe: classeNom,
         ...creneau,
       };
@@ -328,28 +377,38 @@ function afficherResultats(zoneResultats, items, sousTitre, options) {
   let html = '<div class="resultats-entete"><h2>' + escapeHtml(sousTitre) + '</h2>' +
     '<span class="compte">' + items.length + (items.length > 1 ? ' khôlles' : ' khôlle') + '</span></div>';
 
+  let derniereSemaineAffichee = null;
+
   for (const item of items) {
     const d = formatBilletDate(item.date);
     const isMathsTB1 = estMathsTB1(item);
     const afficherClasseGroupe = options.afficherClasseGroupe !== false;
     const afficherNomProf = options.afficherNomProf !== false;
 
-    // Mode prof (afficherClasseGroupe=true) : couleur par classe.
-    // Mode élève (afficherClasseGroupe=false) : couleur par matière.
+    if (item.libelleSemaine && item.libelleSemaine !== derniereSemaineAffichee) {
+      html += '<div class="entete-semaine">' + escapeHtml(item.libelleSemaine) + '</div>';
+      derniereSemaineAffichee = item.libelleSemaine;
+    }
+
+    // Mode prof (afficherClasseGroupe=true) : couleur par classe, classe+groupe en titre.
+    // Mode élève (afficherClasseGroupe=false) : couleur par matière, matière en titre.
     const couleurAccent = afficherClasseGroupe ? couleurClasse(item.classe) : couleurMatiere(item.matiere);
+    const titrePrincipal = afficherClasseGroupe && item.classe
+      ? item.classe + ' – Groupe ' + item.groupeIndex
+      : (item.matiere || 'Khôlle');
 
     html += '<article class="billet' + (isMathsTB1 ? ' maths-tb1' : '') + '" style="border-left-color:' + couleurAccent + ';">' +
       '<div class="billet-heure" style="background:' + couleurAccent + ';"><span class="jour">' + d.jour + '</span>' +
       '<span class="date">' + d.numero + '</span>' +
       '<span class="mois">' + d.mois + '</span></div>' +
       '<div class="billet-corps">' +
-      '<div class="billet-matiere">' + escapeHtml(item.matiere || 'Khôlle') + '</div>' +
+      '<div class="billet-matiere">' + escapeHtml(titrePrincipal) + '</div>' +
       '<div class="billet-details">' +
       '<span>🕐 ' + escapeHtml(item.horaireLigne || '') + '</span>' +
       (item.duree ? '<span>⏱ ' + formatDuree(item.duree) + '</span>' : '') +
       (item.salle ? '<span>📍 ' + escapeHtml(item.salle) + '</span>' : '') +
-      (afficherClasseGroupe && item.classe ? '<span>' + escapeHtml(item.classe) + ' – Groupe ' + item.groupeIndex + '</span>' : '') +
-      (afficherNomProf && item.nom ? '<span>👤 ' + escapeHtml(item.nom) + '</span>' : '') +
+      (afficherClasseGroupe && item.matiere ? '<span>' + escapeHtml(item.matiere) + '</span>' : '') +
+      (!afficherClasseGroupe && afficherNomProf && item.nom ? '<span>👤 ' + escapeHtml(item.nom) + '</span>' : '') +
       '</div>' +
       (isMathsTB1 && !item.duree ? '<span class="badge-maths">Durée variable selon la semaine</span>' : '') +
       '</div></article>';

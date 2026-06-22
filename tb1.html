@@ -19,7 +19,7 @@
      (Fichier > Partager > Publier sur le web > sélectionner l'onglet "TB1 (élèves)")
      ============================================================================ -->
 <script>
-  const SHEET_ID = "1jxBFq5x4I5X9-W7dQ_y7QSduLn1nvqz15pPeeyQqyg8";
+  const SHEET_ID = "REMPLACER_PAR_L_IDENTIFIANT_DU_GOOGLE_SHEET";
   const CLASSE_FIXE = "TB1";
 </script>
 
@@ -78,11 +78,11 @@
     const groupe = parseInt(selectGroupeEleve.value, 10);
     afficherChargement(zoneResultats);
     try {
-      const [rows, pivot] = await Promise.all([
+      const [rows, exportWeb] = await Promise.all([
         chargerOnglet(ONGLETS[CLASSE_FIXE]),
-        chargerPivotMathsTB1(),
+        chargerExportWeb(),
       ]);
-      const items = extraireCreneaux(rows, CLASSE_FIXE, { colonneIndex: 4 + groupe - 1, pivotMathsTB1: pivot });
+      const items = extraireCreneaux(rows, CLASSE_FIXE, { colonneIndex: 4 + groupe - 1, pivotMathsTB1: exportWeb.pivot });
       afficherResultats(zoneResultats, items, CLASSE_FIXE + ' — Groupe ' + groupe,
         { afficherClasseGroupe: false, afficherNomProf: true });
       afficherDebugSiActive(rows, 4 + groupe - 1);

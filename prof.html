@@ -19,7 +19,7 @@
      (Fichier > Partager > Publier sur le web > sélectionner les 4 onglets élèves)
      ============================================================================ -->
 <script>
-  const SHEET_ID = "1jxBFq5x4I5X9-W7dQ_y7QSduLn1nvqz15pPeeyQqyg8";
+  const SHEET_ID = "REMPLACER_PAR_L_IDENTIFIANT_DU_GOOGLE_SHEET";
 </script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -69,19 +69,40 @@
     }
     afficherChargement(zoneResultats);
     try {
-      const pivot = await chargerPivotMathsTB1();
+      const exportWeb = await chargerExportWeb();
       const toutes = [];
       for (const classe of Object.keys(ONGLETS)) {
         const rows = await chargerOnglet(ONGLETS[classe]);
-        const items = extraireCreneaux(rows, classe, { nomRecherche: nom, pivotMathsTB1: pivot });
+        const items = extraireCreneaux(rows, classe, {
+          nomRecherche: nom,
+          pivotMathsTB1: exportWeb.pivot,
+          exportWeb: exportWeb,
+        });
         toutes.push(...items);
       }
       afficherResultats(zoneResultats, toutes, 'Planning de ' + nom,
         { afficherClasseGroupe: true, afficherNomProf: false });
+      afficherHeuresParLot(nom, exportWeb);
     } catch (e) {
       afficherErreur(zoneResultats, 'Impossible de charger le planning pour le moment. Vérifiez votre connexion, ou réessayez plus tard.');
       console.error(e);
     }
+  }
+
+  function afficherHeuresParLot(nom, exportWeb) {
+    // Recherche insensible à la casse/accents approximative : on cherche une clé
+    // de heuresParNom qui correspond au nom saisi (même logique que la recherche
+    // de créneaux, en limite de mot).
+    const motif = new RegExp('(?:^|\\b)' + nom.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:\\b|$)', 'i');
+    const cleTrouvee = Object.keys(exportWeb.heuresParNom).find(cle => motif.test(cle));
+    if (!cleTrouvee) return;
+    const heures = exportWeb.heuresParNom[cleTrouvee];
+    const bloc = document.createElement('div');
+    bloc.className = 'panel';
+    bloc.style.marginTop = '1.5rem';
+    bloc.innerHTML = '<div class="resultats-entete"><h2>Heures déclarées</h2></div>' +
+      '<p style="margin:0;color:var(--gris);">' + formatHeuresParLot(heures) + '</p>';
+    zoneResultats.appendChild(bloc);
   }
 
   btnRechercher.addEventListener('click', rechercher);
