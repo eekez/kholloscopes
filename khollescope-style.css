@@ -211,9 +211,49 @@
     overflow: hidden;
     box-shadow: 0 2px 8px rgba(47, 79, 62, 0.08);
     border: 1px solid var(--bordure);
+    border-left-width: 5px;
+    border-left-color: var(--bordure);
   }
-  .billet.maths-tb1 {
-    border-left: 4px solid var(--or);
+
+  .bandeau-install {
+    max-width: 720px;
+    margin: 0 auto 1rem;
+    padding: 0 1.25rem;
+  }
+  .bandeau-install-contenu {
+    background: var(--or-clair);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 0.88rem;
+    color: var(--vert);
+    margin-top: -1.25rem;
+    position: relative;
+    z-index: 3;
+  }
+  .bandeau-install-contenu button {
+    background: var(--vert);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem 0.9rem;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .bandeau-install-fermer {
+    background: none;
+    border: none;
+    color: var(--vert);
+    font-size: 1.1rem;
+    cursor: pointer;
+    padding: 0 0.25rem;
+    line-height: 1;
   }
   .billet-heure {
     background: var(--vert);

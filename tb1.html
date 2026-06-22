@@ -19,7 +19,7 @@
      (Fichier > Partager > Publier sur le web > sélectionner l'onglet "TB1 (élèves)")
      ============================================================================ -->
 <script>
-  const SHEET_ID = "1jxBFq5x4I5X9-W7dQ_y7QSduLn1nvqz15pPeeyQqyg8";
+  const SHEET_ID = "REMPLACER_PAR_L_IDENTIFIANT_DU_GOOGLE_SHEET";
   const CLASSE_FIXE = "TB1";
 </script>
 
@@ -109,6 +109,8 @@
   }
 
   btnRechercher.addEventListener('click', rechercher);
+
+  initBandeauInstallation('Khôlles TB1');
 
   if (SHEET_ID.startsWith('REMPLACER')) {
     afficherErreur(zoneResultats, 'Configuration manquante : l\'identifiant du Google Sheet n\'a pas encore été renseigné dans le code (variable SHEET_ID en haut du fichier).');

@@ -85,6 +85,8 @@
   }
 
   btnRechercher.addEventListener('click', rechercher);
+
+  initBandeauInstallation('Khôlles Profs');
   inputNomProf.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') rechercher();
   });

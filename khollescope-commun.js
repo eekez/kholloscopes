@@ -264,6 +264,43 @@ function estMathsTB1(item) {
   return item.classe === 'TB1' && /math/i.test(item.matiere);
 }
 
+// Palette par matière (vue élève) — distincte et lisible, indépendante des
+// couleurs de classe utilisées côté professeur. Couleurs choisies/ajustées pour
+// garantir un contraste suffisant (WCAG AA, ratio >= 4.5:1) avec du texte blanc.
+const PALETTE_MATIERES = {
+  maths: '#3D6EA5',
+  physique: '#A0692E',
+  pc: '#A0692E',
+  svt: '#478356',
+  btk: '#7A5C9E',
+  anglais: '#B5483F',
+  français: '#89752F',
+  francais: '#89752F',
+  géo: '#527D7D',
+  geo: '#527D7D',
+  info: '#6B6B6B',
+};
+const COULEUR_MATIERE_DEFAUT = '#8A8478';
+
+function couleurMatiere(matiere) {
+  if (!matiere) return COULEUR_MATIERE_DEFAUT;
+  const cle = matiere.trim().toLowerCase();
+  return PALETTE_MATIERES[cle] || COULEUR_MATIERE_DEFAUT;
+}
+
+// Palette par classe (vue professeur) — reprend les teintes déjà utilisées
+// dans le classeur Excel, légèrement ajustées pour le contraste avec texte blanc.
+const PALETTE_CLASSES = {
+  TB1: '#4A6FA5',
+  TB2: '#4C7C59',
+  BCPST1: '#B1621C',
+  BCPST2: '#6B4E71',
+};
+
+function couleurClasse(classe) {
+  return PALETTE_CLASSES[classe] || COULEUR_MATIERE_DEFAUT;
+}
+
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -297,8 +334,12 @@ function afficherResultats(zoneResultats, items, sousTitre, options) {
     const afficherClasseGroupe = options.afficherClasseGroupe !== false;
     const afficherNomProf = options.afficherNomProf !== false;
 
-    html += '<article class="billet' + (isMathsTB1 ? ' maths-tb1' : '') + '">' +
-      '<div class="billet-heure"><span class="jour">' + d.jour + '</span>' +
+    // Mode prof (afficherClasseGroupe=true) : couleur par classe.
+    // Mode élève (afficherClasseGroupe=false) : couleur par matière.
+    const couleurAccent = afficherClasseGroupe ? couleurClasse(item.classe) : couleurMatiere(item.matiere);
+
+    html += '<article class="billet' + (isMathsTB1 ? ' maths-tb1' : '') + '" style="border-left-color:' + couleurAccent + ';">' +
+      '<div class="billet-heure" style="background:' + couleurAccent + ';"><span class="jour">' + d.jour + '</span>' +
       '<span class="date">' + d.numero + '</span>' +
       '<span class="mois">' + d.mois + '</span></div>' +
       '<div class="billet-corps">' +
@@ -314,4 +355,69 @@ function afficherResultats(zoneResultats, items, sousTitre, options) {
       '</div></article>';
   }
   zoneResultats.innerHTML = html;
+}
+
+/**
+ * Initialise le bandeau d'installation de l'app sur l'écran d'accueil.
+ * - Sur Chrome/Android (et navigateurs Chromium) : capture l'événement natif
+ *   et propose un bouton "Installer" qui déclenche directement la fenêtre
+ *   native, sans passer par le menu ⋮.
+ * - Sur iOS/Safari : aucune API équivalente n'existe ; on affiche à la place
+ *   une instruction simple (partager > Sur l'écran d'accueil).
+ * - Sur desktop ou si l'app est déjà installée : le bandeau ne s'affiche pas.
+ */
+function initBandeauInstallation(nomAppCourt) {
+  const estIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const estStandalone = window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true;
+  if (estStandalone) return; // déjà installée, rien à proposer
+
+  const conteneur = document.createElement('div');
+  conteneur.className = 'bandeau-install';
+  conteneur.style.display = 'none';
+
+  function construireBandeau(innerHtml) {
+    conteneur.innerHTML = '<div class="bandeau-install-contenu">' + innerHtml + '</div>';
+    conteneur.style.display = '';
+  }
+
+  if (estIOS) {
+    // Pas d'API d'installation programmatique sur iOS : on guide manuellement.
+    construireBandeau(
+      '<span>📲 Pour garder ' + escapeHtml(nomAppCourt) + ' sur votre écran d\'accueil : ' +
+      'appuyez sur le bouton de partage <strong>⬆️</strong> puis « Sur l\'écran d\'accueil ».</span>' +
+      '<button type="button" class="bandeau-install-fermer" aria-label="Fermer">✕</button>'
+    );
+    conteneur.querySelector('.bandeau-install-fermer').addEventListener('click', () => {
+      conteneur.style.display = 'none';
+    });
+  } else {
+    let evenementDiffere = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      evenementDiffere = e;
+      construireBandeau(
+        '<span>📲 Installez ' + escapeHtml(nomAppCourt) + ' sur votre écran d\'accueil pour y accéder en un geste.</span>' +
+        '<button type="button" id="btn-install-pwa">Installer</button>'
+      );
+      const btn = conteneur.querySelector('#btn-install-pwa');
+      btn.addEventListener('click', async () => {
+        if (!evenementDiffere) return;
+        evenementDiffere.prompt();
+        await evenementDiffere.userChoice;
+        evenementDiffere = null;
+        conteneur.style.display = 'none';
+      });
+    });
+    window.addEventListener('appinstalled', () => {
+      conteneur.style.display = 'none';
+    });
+  }
+
+  const header = document.querySelector('header');
+  if (header && header.nextSibling) {
+    header.parentNode.insertBefore(conteneur, header.nextSibling);
+  } else {
+    document.body.insertBefore(conteneur, document.body.firstChild);
+  }
 }
