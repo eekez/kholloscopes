@@ -55,11 +55,15 @@ async function chargerExportWeb() {
     if (CLASSES_CONNUES.includes(col0)) {
       // Ligne de la Zone "groupes" : Classe | Groupe | Élèves
       const groupe = row[1];
-      const eleves = row[2];
+      // Colonne H (index 7) plutôt que C : contournement d'un bug connu de l'API
+      // gviz de Google, qui fige sa détection de structure colonne par colonne lors
+      // de son premier accès et ignore ensuite tout contenu ajouté dans une colonne
+      // qu'il avait alors vue entièrement vide (cas de la colonne C ici).
+      const eleves = row[7];
       if (groupe && eleves && eleves.toString().trim()) {
         groupesNonVides.add(col0 + '|' + parseInt(groupe, 10));
       }
-    } else if (col0 !== 'Nom' && col0 !== 'Classe') {
+    } else if (col0 !== 'Nom' && col0 !== 'Classe' && col0 !== 'Pivot Maths TB1') {
       // Ligne de la Zone "heures" : Nom | Lot1 | Lot2 | Lot3 | Lot4
       // (on exclut les lignes d'en-tête "Nom"/"Classe" tapées manuellement)
       heuresParNom[col0] = [1, 2, 3, 4].map(c => parseFloat(row[c]) || 0);
@@ -308,7 +312,11 @@ function calculerDuree(item, pivotMathsTB1) {
 }
 
 function formatDuree(heures) {
-  const minutes = Math.round(heures * 60);
+  // Arrondi de sécurité au dixième d'heure, pour absorber les imprécisions
+  // d'arithmétique flottante (ex: 0.1 + 0.2 = 0.30000000000000004 en JS) avant
+  // la conversion en heures/minutes.
+  const heuresArrondies = Math.round(heures * 10) / 10;
+  const minutes = Math.round(heuresArrondies * 60);
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   if (h === 0) return m + ' min';
