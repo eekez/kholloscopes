@@ -203,6 +203,31 @@
     color: var(--gris);
   }
 
+  .entete-semaine {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 1.05rem;
+    color: var(--vert);
+    margin: 1.75rem 0.25rem 0.85rem;
+  }
+  .entete-semaine:first-of-type {
+    margin-top: 0.25rem;
+  }
+  .entete-semaine::before {
+    content: '📅';
+    font-size: 0.95rem;
+  }
+  .entete-semaine::after {
+    content: '';
+    flex: 1;
+    height: 2px;
+    background: linear-gradient(to right, var(--or-clair), transparent);
+    border-radius: 2px;
+  }
+
   .billet {
     background: var(--creme-carte);
     border-radius: 12px;
@@ -213,6 +238,30 @@
     border: 1px solid var(--bordure);
     border-left-width: 5px;
     border-left-color: var(--bordure);
+    position: relative;
+  }
+
+  .billet.reporte {
+    opacity: 0.55;
+    filter: grayscale(0.6);
+  }
+  .tampon-reporte {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-12deg);
+    border: 3px solid var(--rouge-erreur);
+    color: var(--rouge-erreur);
+    font-weight: 700;
+    font-size: 1.1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.25rem 0.9rem;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.85);
+    z-index: 2;
+    pointer-events: none;
+    white-space: nowrap;
   }
 
   .bandeau-install {

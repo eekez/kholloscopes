@@ -312,11 +312,9 @@ function calculerDuree(item, pivotMathsTB1) {
 }
 
 function formatDuree(heures) {
-  // Arrondi de sécurité au dixième d'heure, pour absorber les imprécisions
-  // d'arithmétique flottante (ex: 0.1 + 0.2 = 0.30000000000000004 en JS) avant
-  // la conversion en heures/minutes.
-  const heuresArrondies = Math.round(heures * 10) / 10;
-  const minutes = Math.round(heuresArrondies * 60);
+  // Arrondi direct à la minute (pas d'arrondi intermédiaire au dixième d'heure,
+  // qui décalait à tort des durées exactes comme 0.75h/45min vers 0.8h/48min).
+  const minutes = Math.round(heures * 60);
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
   if (h === 0) return m + ' min';
@@ -326,6 +324,12 @@ function formatDuree(heures) {
 
 function estMathsTB1(item) {
   return item.classe === 'TB1' && /math/i.test(item.matiere);
+}
+
+const MOTIF_REPORTE = /\breport[eé]?e?\b/i;
+
+function estReporte(item) {
+  return MOTIF_REPORTE.test(item.brut || '');
 }
 
 // Palette par matière (vue élève) — distincte et lisible, indépendante des
@@ -397,6 +401,7 @@ function afficherResultats(zoneResultats, items, sousTitre, options) {
   for (const item of items) {
     const d = formatBilletDate(item.date);
     const isMathsTB1 = estMathsTB1(item);
+    const reporte = estReporte(item);
     const afficherClasseGroupe = options.afficherClasseGroupe !== false;
     const afficherNomProf = options.afficherNomProf !== false;
 
@@ -412,7 +417,9 @@ function afficherResultats(zoneResultats, items, sousTitre, options) {
       ? item.classe + ' – Groupe ' + item.groupeIndex
       : (item.matiere || 'Khôlle');
 
-    html += '<article class="billet' + (isMathsTB1 ? ' maths-tb1' : '') + '" style="border-left-color:' + couleurAccent + ';">' +
+    html += '<article class="billet' + (isMathsTB1 ? ' maths-tb1' : '') + (reporte ? ' reporte' : '') +
+      '" style="border-left-color:' + couleurAccent + ';">' +
+      (reporte ? '<span class="tampon-reporte">Reporté</span>' : '') +
       '<div class="billet-heure" style="background:' + couleurAccent + ';"><span class="jour">' + d.jour + '</span>' +
       '<span class="date">' + d.numero + '</span>' +
       '<span class="mois">' + d.mois + '</span></div>' +
