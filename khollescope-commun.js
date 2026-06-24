@@ -295,7 +295,10 @@ function extraireCreneaux(rows, classeNom, options) {
         const motif = new RegExp(
           '(?:^|\\b)' + options.nomRecherche.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:\\b|$)', 'i'
         );
-        if (!motif.test(creneau.nom)) continue;
+       if (
+		  !motif.test(creneau.nom) &&
+		  !motif.test(creneau.brut)
+		) continue;
       }
 
       const item = {
