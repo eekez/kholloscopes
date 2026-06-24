@@ -61,33 +61,33 @@
   const btnRechercher = document.getElementById('btn-rechercher');
   const zoneResultats = document.getElementById('zone-resultats');
 
-	async function rechercher() {
-		const nom = inputNomProf.value.trim();
-		if (!nom) {
-		  afficherErreur(zoneResultats, 'Merci de saisir un nom.');
-		  return;
-		}
-		afficherChargement(zoneResultats);
-		try {
-		  const exportWeb = await chargerExportWeb();
-		  const toutes = [];
-		  for (const classe of Object.keys(ONGLETS)) {
-			const rows = await chargerOnglet(ONGLETS[classe]);
-			const items = extraireCreneaux(rows, classe, {
-			  nomRecherche: nom,
-			  pivotMathsTB1: exportWeb.pivot,
-			  // exportWeb: exportWeb, <-- ENLEVEZ OU COMMENTEZ CETTE LIGNE
-			});
-			toutes.push(...items);
-		  }
-		  afficherResultats(zoneResultats, toutes, 'Planning de ' + nom,
-			{ afficherClasseGroupe: true, afficherNomProf: false });
-		  afficherHeuresParLot(nom, exportWeb);
-		} catch (e) {
-		  afficherErreur(zoneResultats, 'Impossible de charger le planning pour le moment. Vérifiez votre connexion, ou réessayez plus tard.');
-		  console.error(e);
-		}
-	  }
+  async function rechercher() {
+    const nom = inputNomProf.value.trim();
+    if (!nom) {
+      afficherErreur(zoneResultats, 'Merci de saisir un nom.');
+      return;
+    }
+    afficherChargement(zoneResultats);
+    try {
+      const exportWeb = await chargerExportWeb();
+      const toutes = [];
+      for (const classe of Object.keys(ONGLETS)) {
+        const rows = await chargerOnglet(ONGLETS[classe]);
+        const items = extraireCreneaux(rows, classe, {
+          nomRecherche: nom,
+          pivotMathsTB1: exportWeb.pivot,
+          exportWeb: exportWeb,
+        });
+        toutes.push(...items);
+      }
+      afficherResultats(zoneResultats, toutes, 'Planning de ' + nom,
+        { afficherClasseGroupe: true, afficherNomProf: false });
+      afficherHeuresParLot(nom, exportWeb);
+    } catch (e) {
+      afficherErreur(zoneResultats, 'Impossible de charger le planning pour le moment. Vérifiez votre connexion, ou réessayez plus tard.');
+      console.error(e);
+    }
+  }
 
   function afficherHeuresParLot(nom, exportWeb) {
     // Recherche insensible à la casse/accents approximative : on cherche une clé
@@ -106,25 +106,16 @@
   }
 
   btnRechercher.addEventListener('click', rechercher);
-
-  initBandeauInstallation('Khôlles Profs');
   inputNomProf.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') rechercher();
   });
+
+  initBandeauInstallation('Khôlles Profs');
 
   if (SHEET_ID.startsWith('REMPLACER')) {
     afficherErreur(zoneResultats, 'Configuration manquante : l\'identifiant du Google Sheet n\'a pas encore été renseigné dans le code (variable SHEET_ID en haut du fichier).');
   }
 })();
-</script>
-
-<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js').catch(() => {
-      // Échec silencieux : l'app reste utilisable normalement dans le navigateur,
-      // seule l'installation sur l'écran d'accueil pourrait ne pas être proposée.
-    });
-  }
 </script>
 
 <script>

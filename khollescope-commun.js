@@ -204,9 +204,21 @@ function analyserCreneau(texte) {
     nom = salleLigne.trim();
     salle = '';
   }
+  let civilite = '';
+  const matchCivilite = nom.match(/^(M\.|Mme|Mr|Mlle)\s*/i);
+  if (matchCivilite) {
+    civilite = matchCivilite[1];
+    // Normalisation légère (M -> M., MME -> Mme) pour un affichage homogène
+    // même si la saisie d'origine variait en casse ou ponctuation.
+    const civiliteMinuscule = civilite.toLowerCase().replace('.', '');
+    if (civiliteMinuscule === 'm') civilite = 'M.';
+    else if (civiliteMinuscule === 'mme') civilite = 'Mme';
+    else if (civiliteMinuscule === 'mr') civilite = 'M.';
+    else if (civiliteMinuscule === 'mlle') civilite = 'Mlle';
+  }
   nom = nom.replace(/^(M\.|Mme|Mr|Mlle)\s*/i, '').trim();
 
-  return { matiere, horaireLigne, salle, nom, brut: texte };
+  return { matiere, horaireLigne, salle, nom, civilite, brut: texte };
 }
 
 /**
@@ -295,10 +307,7 @@ function extraireCreneaux(rows, classeNom, options) {
         const motif = new RegExp(
           '(?:^|\\b)' + options.nomRecherche.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?:\\b|$)', 'i'
         );
-       if (
-		  !motif.test(creneau.nom) &&
-		  !motif.test(creneau.brut)
-		) continue;
+        if (!motif.test(creneau.nom)) continue;
       }
 
       const item = {
@@ -341,10 +350,22 @@ function estMathsTB1(item) {
   return item.classe === 'TB1' && /math/i.test(item.matiere);
 }
 
-const MOTIF_REPORTE = /\breport[eé]?e?\b/i;
+const MOTIF_REPORTE = /\breport(é|ée|e|ee)?(?=[\s\-–]|$)/i;
 
 function estReporte(item) {
   return MOTIF_REPORTE.test(item.brut || '');
+}
+
+/**
+ * Retire la mention "reporté/reportée/..." (et un éventuel tiret orphelin
+ * laissé autour) du texte brut d'un créneau reporté, pour n'afficher que ce
+ * qui reste (typiquement une initiale du prof concerné, ex: "M. L").
+ */
+function nettoyerTexteReporte(brut) {
+  let texte = (brut || '').replace(MOTIF_REPORTE, ' ');
+  texte = texte.replace(/^[\s\-–]+|[\s\-–]+$/g, '');
+  texte = texte.replace(/\s+/g, ' ').trim();
+  return texte;
 }
 
 // Palette par matière (vue élève) — distincte et lisible, indépendante des
@@ -458,7 +479,7 @@ function afficherResultats(zoneResultats, items, sousTitre, options) {
       '<span class="date">' + d.numero + '</span>' +
       '<span class="mois">' + d.mois + '</span></div>' +
       (reporte
-        ? '<div class="billet-corps billet-corps-masque"></div>'
+        ? '<div class="billet-corps billet-corps-reporte">' + escapeHtml(nettoyerTexteReporte(item.brut)) + '</div>'
         : '<div class="billet-corps">' +
           '<div class="billet-matiere">' + escapeHtml(titrePrincipal) + '</div>' +
           '<div class="billet-details">' +
@@ -466,7 +487,7 @@ function afficherResultats(zoneResultats, items, sousTitre, options) {
           (item.duree ? '<span>⏱ ' + formatDuree(item.duree) + '</span>' : '') +
           (item.salle ? '<span>📍 ' + escapeHtml(item.salle) + '</span>' : '') +
           (afficherClasseGroupe && item.matiere ? '<span>' + escapeHtml(item.matiere) + '</span>' : '') +
-          (!afficherClasseGroupe && afficherNomProf && item.nom ? '<span>👤 ' + escapeHtml(item.nom) + '</span>' : '') +
+          (!afficherClasseGroupe && afficherNomProf && item.nom ? '<span>👤 ' + escapeHtml((item.civilite ? item.civilite + ' ' : '') + item.nom) + '</span>' : '') +
           '</div>' +
           (isMathsTB1 && !item.duree ? '<span class="badge-maths">Durée variable selon la semaine</span>' : '') +
           '</div>') +
