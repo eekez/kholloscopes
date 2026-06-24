@@ -242,8 +242,11 @@
   }
 
   .billet.reporte {
-    opacity: 0.55;
-    filter: grayscale(0.6);
+    opacity: 0.7;
+  }
+  .billet-corps-masque {
+    flex: 1;
+    min-height: 70px;
   }
   .tampon-reporte {
     position: absolute;
@@ -282,6 +285,16 @@
     margin-top: -1.25rem;
     position: relative;
     z-index: 3;
+  }
+
+  .bandeau-modif {
+    background: var(--vert);
+    color: white;
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    font-size: 0.88rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
   }
   .bandeau-install-contenu button {
     background: var(--vert);

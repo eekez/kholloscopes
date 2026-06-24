@@ -62,6 +62,8 @@
   const btnRechercher = document.getElementById('btn-rechercher');
   const zoneResultats = document.getElementById('zone-resultats');
 
+  const CLE_STOCKAGE_GROUPE = 'khollescope_groupe_' + CLASSE_FIXE;
+
   function peuplerGroupes() {
     const n = N_GROUPES[CLASSE_FIXE] || 8;
     selectGroupeEleve.innerHTML = '';
@@ -71,21 +73,31 @@
       opt.textContent = 'Groupe ' + i;
       selectGroupeEleve.appendChild(opt);
     }
+    const groupeMemorise = localStorage.getItem(CLE_STOCKAGE_GROUPE);
+    if (groupeMemorise && parseInt(groupeMemorise, 10) <= n) {
+      selectGroupeEleve.value = groupeMemorise;
+    }
   }
   peuplerGroupes();
 
   async function rechercher() {
     const groupe = parseInt(selectGroupeEleve.value, 10);
+    localStorage.setItem(CLE_STOCKAGE_GROUPE, String(groupe));
     afficherChargement(zoneResultats);
     try {
       const rows = await chargerOnglet(ONGLETS[CLASSE_FIXE]);
       const items = extraireCreneaux(rows, CLASSE_FIXE, { colonneIndex: 4 + groupe - 1 });
       afficherResultats(zoneResultats, items, CLASSE_FIXE + ' — Groupe ' + groupe,
         { afficherClasseGroupe: false, afficherNomProf: true });
+      verifierModificationsRecentes(zoneResultats, items, 'khollescope_vu_' + CLASSE_FIXE + '_' + groupe);
     } catch (e) {
       afficherErreur(zoneResultats, 'Impossible de charger le planning pour le moment. Vérifiez votre connexion, ou réessayez plus tard.');
       console.error(e);
     }
+  }
+
+  if (localStorage.getItem(CLE_STOCKAGE_GROUPE)) {
+    rechercher();
   }
 
   btnRechercher.addEventListener('click', rechercher);

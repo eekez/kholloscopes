@@ -66,7 +66,7 @@ async function chargerExportWeb() {
     } else if (col0 !== 'Nom' && col0 !== 'Classe' && col0 !== 'Pivot Maths TB1') {
       // Ligne de la Zone "heures" : Nom | Lot1 | Lot2 | Lot3 | Lot4
       // (on exclut les lignes d'en-tête "Nom"/"Classe" tapées manuellement)
-      heuresParNom[col0] = [1, 2, 3, 4].map(c => parseFloat(row[c]) || 0);
+      heuresParNom[col0] = [1, 2, 3, 4].map(c => parseNombreFr(row[c]));
     }
   }
 
@@ -207,6 +207,18 @@ function analyserCreneau(texte) {
   nom = nom.replace(/^(M\.|Mme|Mr|Mlle)\s*/i, '').trim();
 
   return { matiere, horaireLigne, salle, nom, brut: texte };
+}
+
+/**
+ * Convertit un nombre tel que renvoyé par Google Sheets en paramètres régionaux
+ * français (virgule décimale, ex: "1,75") en un nombre JS classique (point).
+ * parseFloat seul s'arrêterait au premier caractère non numérique et tronquerait
+ * "1,75" en 1 — d'où la nécessité de remplacer la virgule avant conversion.
+ */
+function parseNombreFr(valeur) {
+  if (valeur === null || valeur === undefined) return 0;
+  const n = parseFloat(String(valeur).trim().replace(',', '.'));
+  return isNaN(n) ? 0 : n;
 }
 
 function parserDateFr(s) {
@@ -397,6 +409,10 @@ function afficherResultats(zoneResultats, items, sousTitre, options) {
     '<span class="compte">' + items.length + (items.length > 1 ? ' khôlles' : ' khôlle') + '</span></div>';
 
   let derniereSemaineAffichee = null;
+  let idSemaineCourante = null;
+  let semaineCouranteTrouvee = false;
+  const aujourdHui = new Date();
+  aujourdHui.setHours(0, 0, 0, 0);
 
   for (const item of items) {
     const d = formatBilletDate(item.date);
@@ -406,7 +422,22 @@ function afficherResultats(zoneResultats, items, sousTitre, options) {
     const afficherNomProf = options.afficherNomProf !== false;
 
     if (item.libelleSemaine && item.libelleSemaine !== derniereSemaineAffichee) {
-      html += '<div class="entete-semaine">' + escapeHtml(item.libelleSemaine) + '</div>';
+      // Premier en-tête de semaine dont la date n'est pas encore entièrement passée
+      // (la khôlle elle-même, ou la fin de sa semaine si on raisonne large) : on lui
+      // donne un identifiant pour pouvoir y défiler automatiquement à l'ouverture.
+      let idAttribut = '';
+      // On compare à la FIN de la semaine (vendredi, +4 jours) plutôt qu'à sa date
+      // de début : sinon, en plein milieu d'une semaine de khôlles, le marqueur
+      // sautait déjà à la semaine suivante alors que la semaine en cours n'est pas
+      // encore terminée.
+      const finDeSemaine = new Date(item.date.getTime());
+      finDeSemaine.setDate(finDeSemaine.getDate() + 4);
+      if (!semaineCouranteTrouvee && finDeSemaine >= aujourdHui) {
+        idSemaineCourante = 'semaine-courante';
+        idAttribut = ' id="' + idSemaineCourante + '"';
+        semaineCouranteTrouvee = true;
+      }
+      html += '<div class="entete-semaine"' + idAttribut + '>' + escapeHtml(item.libelleSemaine) + '</div>';
       derniereSemaineAffichee = item.libelleSemaine;
     }
 
@@ -419,23 +450,36 @@ function afficherResultats(zoneResultats, items, sousTitre, options) {
 
     html += '<article class="billet' + (isMathsTB1 ? ' maths-tb1' : '') + (reporte ? ' reporte' : '') +
       '" style="border-left-color:' + couleurAccent + ';">' +
-      (reporte ? '<span class="tampon-reporte">Reporté</span>' : '') +
+      (reporte ? '<span class="tampon-reporte">Reportée</span>' : '') +
       '<div class="billet-heure" style="background:' + couleurAccent + ';"><span class="jour">' + d.jour + '</span>' +
       '<span class="date">' + d.numero + '</span>' +
       '<span class="mois">' + d.mois + '</span></div>' +
-      '<div class="billet-corps">' +
-      '<div class="billet-matiere">' + escapeHtml(titrePrincipal) + '</div>' +
-      '<div class="billet-details">' +
-      '<span>🕐 ' + escapeHtml(item.horaireLigne || '') + '</span>' +
-      (item.duree ? '<span>⏱ ' + formatDuree(item.duree) + '</span>' : '') +
-      (item.salle ? '<span>📍 ' + escapeHtml(item.salle) + '</span>' : '') +
-      (afficherClasseGroupe && item.matiere ? '<span>' + escapeHtml(item.matiere) + '</span>' : '') +
-      (!afficherClasseGroupe && afficherNomProf && item.nom ? '<span>👤 ' + escapeHtml(item.nom) + '</span>' : '') +
-      '</div>' +
-      (isMathsTB1 && !item.duree ? '<span class="badge-maths">Durée variable selon la semaine</span>' : '') +
-      '</div></article>';
+      (reporte
+        ? '<div class="billet-corps billet-corps-masque"></div>'
+        : '<div class="billet-corps">' +
+          '<div class="billet-matiere">' + escapeHtml(titrePrincipal) + '</div>' +
+          '<div class="billet-details">' +
+          '<span>🕐 ' + escapeHtml(item.horaireLigne || '') + '</span>' +
+          (item.duree ? '<span>⏱ ' + formatDuree(item.duree) + '</span>' : '') +
+          (item.salle ? '<span>📍 ' + escapeHtml(item.salle) + '</span>' : '') +
+          (afficherClasseGroupe && item.matiere ? '<span>' + escapeHtml(item.matiere) + '</span>' : '') +
+          (!afficherClasseGroupe && afficherNomProf && item.nom ? '<span>👤 ' + escapeHtml(item.nom) + '</span>' : '') +
+          '</div>' +
+          (isMathsTB1 && !item.duree ? '<span class="badge-maths">Durée variable selon la semaine</span>' : '') +
+          '</div>') +
+      '</article>';
   }
   zoneResultats.innerHTML = html;
+
+  // Défilement automatique vers la semaine en cours/à venir, pour que l'élève
+  // n'ait pas à chercher en remontant tout le planning depuis la rentrée.
+  if (idSemaineCourante) {
+    const cible = document.getElementById(idSemaineCourante);
+    if (cible) {
+      // Léger délai pour laisser le navigateur terminer le rendu avant de défiler.
+      setTimeout(() => cible.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    }
+  }
 }
 
 /**
@@ -501,4 +545,38 @@ function initBandeauInstallation(nomAppCourt) {
   } else {
     document.body.insertBefore(conteneur, document.body.firstChild);
   }
+}
+
+/**
+ * Détecte si le planning des 3 prochaines semaines (semaine en cours incluse) a
+ * changé depuis la dernière consultation de cet élève sur cet appareil, et
+ * affiche un encart si c'est le cas. Compromis pragmatique face à l'absence de
+ * vraie notification push (qui nécessiterait un serveur permanent) : l'alerte
+ * n'apparaît qu'à l'ouverture de l'app, pas en tâche de fond.
+ */
+function verifierModificationsRecentes(zoneResultats, items, cleStockage) {
+  const aujourdHui = new Date();
+  aujourdHui.setHours(0, 0, 0, 0);
+  const limite = new Date(aujourdHui.getTime());
+  limite.setDate(limite.getDate() + 21); // 3 semaines
+
+  const itemsProches = items
+    .filter(it => it.date >= aujourdHui && it.date <= limite)
+    .sort((a, b) => a.date - b.date);
+
+  const empreinteActuelle = itemsProches
+    .map(it => it.date.toISOString().slice(0, 10) + '|' + (it.brut || ''))
+    .join(';;');
+
+  const empreinteStockee = localStorage.getItem(cleStockage);
+
+  if (empreinteStockee !== null && empreinteStockee !== empreinteActuelle) {
+    const bandeau = document.createElement('div');
+    bandeau.className = 'bandeau-modif';
+    bandeau.innerHTML =
+      '⚡ Le planning des prochaines semaines a changé depuis votre dernière visite.';
+    zoneResultats.insertBefore(bandeau, zoneResultats.firstChild);
+  }
+
+  localStorage.setItem(cleStockage, empreinteActuelle);
 }
