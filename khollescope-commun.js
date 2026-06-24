@@ -296,8 +296,8 @@ function extraireCreneaux(rows, classeNom, options) {
 
       const groupeIndex = c - 4 + 1;
 
-      if (options.exportWeb && !groupeEstNonVide(options.exportWeb, classeNom, groupeIndex)) {
-        continue; // groupe sans élève : on ne signale pas ce créneau au prof
+	if (!options.nomRecherche && options.exportWeb && !	groupeEstNonVide(options.exportWeb, classeNom, groupeIndex)) {
+        continue; 
       }
 
       const creneau = analyserCreneau(texte);
