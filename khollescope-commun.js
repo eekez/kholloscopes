@@ -296,7 +296,7 @@ function extraireCreneaux(rows, classeNom, options) {
 
       const groupeIndex = c - 4 + 1;
 
-	if (!options.nomRecherche && options.exportWeb && !	groupeEstNonVide(options.exportWeb, classeNom, groupeIndex)) {
+      if (!options.nomRecherche && options.exportWeb && !groupeEstNonVide(options.exportWeb, classeNom, groupeIndex)) {
         continue; 
       }
 
@@ -359,13 +359,20 @@ function estReporte(item) {
 /**
  * Retire la mention "reporté/reportée/..." (et un éventuel tiret orphelin
  * laissé autour) du texte brut d'un créneau reporté, pour n'afficher que ce
- * qui reste (typiquement une initiale du prof concerné, ex: "M. L").
+ * qui reste — en préservant la structure en lignes d'origine (matière/horaire/
+ * salle-nom), pour que analyserCreneau() puisse encore la décomposer normalement
+ * si le créneau reporté contenait un texte complet plutôt qu'une simple initiale.
  */
 function nettoyerTexteReporte(brut) {
-  let texte = (brut || '').replace(MOTIF_REPORTE, ' ');
-  texte = texte.replace(/^[\s\-–]+|[\s\-–]+$/g, '');
-  texte = texte.replace(/\s+/g, ' ').trim();
-  return texte;
+  return (brut || '')
+    .split('\n')
+    .map(ligne => {
+      let l = ligne.replace(MOTIF_REPORTE, ' ');
+      l = l.replace(/^[\s\-–]+|[\s\-–]+$/g, '');
+      return l.replace(/\s+/g, ' ').trim();
+    })
+    .filter(Boolean)
+    .join('\n');
 }
 
 // Palette par matière (vue élève) — distincte et lisible, indépendante des
@@ -468,9 +475,16 @@ function afficherResultats(zoneResultats, items, sousTitre, options) {
     // Mode prof (afficherClasseGroupe=true) : couleur par classe, classe+groupe en titre.
     // Mode élève (afficherClasseGroupe=false) : couleur par matière, matière en titre.
     const couleurAccent = afficherClasseGroupe ? couleurClasse(item.classe) : couleurMatiere(item.matiere);
+
+    // Pour un créneau reporté, on réanalyse le texte UNE FOIS la mention "reportée"
+    // retirée : si la case ne contenait qu'une initiale ("M. L"), seul le nom
+    // s'affichera ; si elle contenait un créneau complet, matière/horaire/salle
+    // s'afficheront normalement, avec la même mise en forme qu'un billet standard
+    // (seule l'opacité du billet + le tampon signalent qu'il est reporté).
+    const donneesAffichees = reporte ? (analyserCreneau(nettoyerTexteReporte(item.brut)) || {}) : item;
     const titrePrincipal = afficherClasseGroupe && item.classe
       ? item.classe + ' – Groupe ' + item.groupeIndex
-      : (item.matiere || 'Khôlle');
+      : (donneesAffichees.matiere || (reporte ? '' : 'Khôlle'));
 
     html += '<article class="billet' + (isMathsTB1 ? ' maths-tb1' : '') + (reporte ? ' reporte' : '') +
       '" style="border-left-color:' + couleurAccent + ';">' +
@@ -478,19 +492,19 @@ function afficherResultats(zoneResultats, items, sousTitre, options) {
       '<div class="billet-heure" style="background:' + couleurAccent + ';"><span class="jour">' + d.jour + '</span>' +
       '<span class="date">' + d.numero + '</span>' +
       '<span class="mois">' + d.mois + '</span></div>' +
-      (reporte
-        ? '<div class="billet-corps billet-corps-reporte">' + escapeHtml(nettoyerTexteReporte(item.brut)) + '</div>'
-        : '<div class="billet-corps">' +
-          '<div class="billet-matiere">' + escapeHtml(titrePrincipal) + '</div>' +
-          '<div class="billet-details">' +
-          '<span>🕐 ' + escapeHtml(item.horaireLigne || '') + '</span>' +
-          (item.duree ? '<span>⏱ ' + formatDuree(item.duree) + '</span>' : '') +
-          (item.salle ? '<span>📍 ' + escapeHtml(item.salle) + '</span>' : '') +
-          (afficherClasseGroupe && item.matiere ? '<span>' + escapeHtml(item.matiere) + '</span>' : '') +
-          (!afficherClasseGroupe && afficherNomProf && item.nom ? '<span>👤 ' + escapeHtml((item.civilite ? item.civilite + ' ' : '') + item.nom) + '</span>' : '') +
-          '</div>' +
-          (isMathsTB1 && !item.duree ? '<span class="badge-maths">Durée variable selon la semaine</span>' : '') +
-          '</div>') +
+      '<div class="billet-corps">' +
+      (titrePrincipal ? '<div class="billet-matiere">' + escapeHtml(titrePrincipal) + '</div>' : '') +
+      '<div class="billet-details">' +
+      (donneesAffichees.horaireLigne ? '<span>🕐 ' + escapeHtml(donneesAffichees.horaireLigne) + '</span>' : '') +
+      (!reporte && item.duree ? '<span>⏱ ' + formatDuree(item.duree) + '</span>' : '') +
+      (donneesAffichees.salle ? '<span>📍 ' + escapeHtml(donneesAffichees.salle) + '</span>' : '') +
+      (afficherClasseGroupe && donneesAffichees.matiere ? '<span>' + escapeHtml(donneesAffichees.matiere) + '</span>' : '') +
+      (!afficherClasseGroupe && afficherNomProf && donneesAffichees.nom
+        ? '<span>👤 ' + escapeHtml((donneesAffichees.civilite ? donneesAffichees.civilite + ' ' : '') + donneesAffichees.nom) + '</span>'
+        : '') +
+      '</div>' +
+      (!reporte && isMathsTB1 && !item.duree ? '<span class="badge-maths">Durée variable selon la semaine</span>' : '') +
+      '</div>' +
       '</article>';
   }
   zoneResultats.innerHTML = html;
