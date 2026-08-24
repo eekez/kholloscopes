@@ -95,88 +95,51 @@ function groupeEstNonVide(donneesExportWeb, classe, groupeIndex) {
  * Extrait la liste des noms d'élèves de chaque groupe.
  * S'arrête impérativement de chercher dès qu'une date de khôlle est rencontrée.
  */
+/**
+ * Extrait la liste des noms d'élèves de chaque groupe (Ligne 2 de l'onglet).
+ * Gère le décalage de gviz (la ligne 2 est soit à l'index 0, soit à l'index 1).
+ */
 function extraireNomsGroupes(rows) {
   const noms = {};
   let ligneNoms = null;
-  
-  // 1. On cherche d'abord la ligne d'en-tête (celle qui contient "Groupe 1")
-  let indexEnTete = -1;
-  for (let i = 0; i < Math.min(10, rows.length); i++) {
+
+  // On analyse uniquement les deux premières lignes renvoyées par gviz (index 0 et 1)
+  for (let i = 0; i < Math.min(2, rows.length); i++) {
     const row = rows[i];
-    if (!row || row.length < 5) continue;
-    
+    if (!row || row.length < 5) continue; // Il faut au moins aller jusqu'à la colonne E (index 4)
+
     let ressembleAEnTete = false;
+    let aDuTexte = false;
+
+    // On parcourt les colonnes des groupes (à partir de la colonne E, index 4)
     for (let c = 4; c < row.length; c++) {
       const texte = (row[c] || '').toString().trim();
-      if (/^(groupe|g\d|gr\.|gr\s|gr\d)/i.test(texte)) {
-        ressembleAEnTete = true;
-        break;
+      if (texte) {
+        aDuTexte = true;
+        // Si la case contient le mot "Groupe" ou "Gr", c'est la ligne d'en-tête, on l'ignore.
+        if (/^(groupe|g\d|gr\.|gr\s|gr\d)/i.test(texte)) {
+          ressembleAEnTete = true;
+        }
       }
     }
-    
-    if (ressembleAEnTete) {
-      indexEnTete = i;
-      break;
-    }
-  }
 
-  // 2. Si on a trouvé la ligne d'en-tête, la ligne des prénoms est la première 
-  // ligne non vide juste en dessous, AVANT les dates de khôlles.
-  if (indexEnTete !== -1) {
-    for (let i = indexEnTete + 1; i < Math.min(indexEnTete + 5, rows.length); i++) {
-      const row = rows[i];
-      if (!row || row.length < 5) continue;
-      
-      // STOP absolu : on a atteint le calendrier des khôlles (ex: "07/09/2026")
-      if (parserDateFr(row[1])) break;
-      
-      let aDuTexte = false;
-      for (let c = 4; c < row.length; c++) {
-        if ((row[c] || '').toString().trim()) {
-          aDuTexte = true;
-          break;
-        }
-      }
-      
-      if (aDuTexte) {
-        ligneNoms = row;
-        break;
-      }
-    }
-  } else {
-    // 3. Cas de secours (fréquent avec Google Sheets) : la ligne "Groupe" est invisible.
-    // On prend la toute première ligne contenant du texte, TOUJOURS AVANT les dates.
-    for (let i = 0; i < Math.min(5, rows.length); i++) {
-      const row = rows[i];
-      if (!row || row.length < 5) continue;
-      
-      // STOP absolu : on a atteint le calendrier des khôlles
-      if (parserDateFr(row[1])) break;
-      
-      let aDuTexte = false;
-      for (let c = 4; c < row.length; c++) {
-        if ((row[c] || '').toString().trim()) {
-          aDuTexte = true;
-          break;
-        }
-      }
-      if (aDuTexte) {
-        ligneNoms = row;
-        break;
-      }
+    // Si on a trouvé du texte, et que ce n'est PAS la ligne "Groupe", c'est forcément la ligne des prénoms !
+    if (aDuTexte && !ressembleAEnTete) {
+      ligneNoms = row;
+      break; // On a trouvé, on arrête de chercher.
     }
   }
 
   // Si on n'a trouvé aucune ligne de noms, on renvoie un objet vide
   if (!ligneNoms) return noms;
 
-  // 4. Extraction et formatage des prénoms
+  // Extraction et formatage des prénoms trouvés
   for (let c = 4; c < ligneNoms.length; c++) {
     const texte = (ligneNoms[c] || '').toString().trim();
-    if (!texte) continue;
+    if (!texte) continue; // Case vide pour ce groupe
     
-    const groupeIndex = c - 4 + 1;
-    // On sépare par virgule, point-virgule ou retour à la ligne et on normalise
+    const groupeIndex = c - 4 + 1; // Col E (4) -> Groupe 1
+    // On sépare par virgule, point-virgule ou retour à la ligne
     const listeNoms = texte.split(/[\n;,]+/).map(n => n.trim()).filter(Boolean);
     if (listeNoms.length) noms[groupeIndex] = listeNoms.join(', ');
   }
