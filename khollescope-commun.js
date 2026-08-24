@@ -93,15 +93,52 @@ function groupeEstNonVide(donneesExportWeb, classe, groupeIndex) {
  */
 function extraireNomsGroupes(rows) {
   const noms = {};
-  const ligneNoms = rows[1];
+  let ligneNoms = null;
+
+  // On cherche la ligne contenant les prénoms dans les 4 premières lignes
+  for (let i = 0; i < Math.min(4, rows.length); i++) {
+    const row = rows[i];
+    if (!row || row.length < 5) continue;
+
+    // Si on trouve une date valide en colonne B (index 1), c'est qu'on a atteint 
+    // les créneaux de l'année. Les prénoms sont donc censés être avant. On arrête.
+    if (parserDateFr(row[1])) continue;
+
+    let aDuTexte = false;
+    let ressembleAEnTete = false;
+
+    // On parcourt les colonnes des groupes (à partir de la colonne E, index 4)
+    for (let c = 4; c < row.length; c++) {
+      const texte = (row[c] || '').toString().trim();
+      if (texte) {
+        aDuTexte = true;
+        // Si le texte ressemble à "Groupe 1", "Gr 2" ou "G1", c'est la ligne d'en-tête
+        if (/^(groupe|g\d|gr\.|gr\s|gr\d)/i.test(texte)) {
+          ressembleAEnTete = true;
+        }
+      }
+    }
+
+    // Si la ligne contient du texte et n'est pas l'en-tête, c'est notre ligne de noms !
+    if (aDuTexte && !ressembleAEnTete) {
+      ligneNoms = row;
+      break;
+    }
+  }
+
+  // Si on n'a trouvé aucune ligne correspondante, on renvoie un objet vide
   if (!ligneNoms) return noms;
+
+  // Extraction et nettoyage des prénoms trouvés
   for (let c = 4; c < ligneNoms.length; c++) {
     const texte = (ligneNoms[c] || '').toString().trim();
     if (!texte) continue;
+    
     const groupeIndex = c - 4 + 1;
     const listeNoms = texte.split(/[\n;,]+/).map(n => n.trim()).filter(Boolean);
     if (listeNoms.length) noms[groupeIndex] = listeNoms.join(', ');
   }
+  
   return noms;
 }
 
