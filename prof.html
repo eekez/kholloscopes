@@ -52,7 +52,7 @@
   Les données proviennent du colloscope tenu par l'établissement — en cas d'écart constaté, merci de le signaler pour correction.
 </footer>
 
-<script src="khollescope-commun.js?v=1"></script>
+<script src="khollescope-commun.js?v=2"></script>
 <script>
 (function () {
   "use strict";
@@ -85,6 +85,7 @@
       afficherResultats(zoneResultats, toutes, 'Planning de ' + nom,
         { afficherClasseGroupe: true, afficherNomProf: false, nomsGroupesParClasse });
       afficherHeuresParLot(nom, exportWeb);
+      afficherDebugNomsSiActive(nomsGroupesParClasse);
     } catch (e) {
       afficherErreur(zoneResultats, 'Impossible de charger le planning pour le moment. Vérifiez votre connexion, ou réessayez plus tard.');
       console.error(e);
@@ -105,6 +106,19 @@
     bloc.innerHTML = '<div class="resultats-entete"><h2>Heures déclarées</h2></div>' +
       '<p style="margin:0;color:var(--gris);">' + formatHeuresParLot(heures) + '</p>';
     zoneResultats.appendChild(bloc);
+  }
+
+  // Mode debug : ajouter ?debug=1 à la fin de l'URL pour afficher, sous les
+  // résultats, le contenu détecté comme "ligne des noms" pour chaque classe.
+  function afficherDebugNomsSiActive(nomsGroupesParClasse) {
+    if (new URLSearchParams(window.location.search).get('debug') !== '1') return;
+    let html = '<div style="margin-top:2rem;padding:1rem;background:#fff;border:2px dashed #C99A3D;border-radius:8px;font-family:monospace;font-size:0.75rem;white-space:pre-wrap;word-break:break-word;">';
+    html += '<strong>MODE DEBUG — noms détectés par classe (ligne d\'index 1 de l\'onglet)</strong>\n\n';
+    for (const classe of Object.keys(nomsGroupesParClasse)) {
+      html += classe + ' : ' + JSON.stringify(nomsGroupesParClasse[classe], null, 2) + '\n\n';
+    }
+    html += '</div>';
+    zoneResultats.innerHTML += html;
   }
 
   btnRechercher.addEventListener('click', rechercher);

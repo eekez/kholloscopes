@@ -81,71 +81,6 @@ function groupeEstNonVide(donneesExportWeb, classe, groupeIndex) {
   return donneesExportWeb.groupesNonVides.has(classe + '|' + groupeIndex);
 }
 
-/**
- * Extrait la liste des noms d'élèves de chaque groupe (Ligne 2 de l'onglet).
- * S'arrête impérativement de chercher dès qu'une date ou un numéro de semaine
- * est rencontré, pour éviter de confondre les khôlles avec des prénoms.
- */
-function extraireNomsGroupes(rows) {
-  const noms = {};
-  let ligneNoms = null;
-
-  // On analyse uniquement les deux premières lignes renvoyées par gviz (index 0 et 1)
-  for (let i = 0; i < Math.min(2, rows.length); i++) {
-    const row = rows[i];
-    if (!row || row.length < 5) continue; // Il faut au moins aller jusqu'à la colonne E (index 4)
-
-    // --- SÉCURITÉ AJOUTÉE ---
-    // Si la colonne A (index 0) contient un numéro de semaine valide, ou si la
-    // colonne B (index 1) contient une date, c'est que nous sommes dans le planning.
-    // Cela arrive quand la ligne des prénoms a été laissée vide.
-    const estNumeroSemaine = !isNaN(parseInt(row[0], 10));
-    const estUneDate = parserDateFr(row[1]) !== null;
-    
-    if (estNumeroSemaine || estUneDate) {
-      break; // On a atteint le calendrier, on arrête de chercher !
-    }
-    // -------------------------
-
-    let ressembleAEnTete = false;
-    let aDuTexte = false;
-
-    // On parcourt les colonnes des groupes (à partir de la colonne E, index 4)
-    for (let c = 4; c < row.length; c++) {
-      const texte = (row[c] || '').toString().trim();
-      if (texte) {
-        aDuTexte = true;
-        // Si la case contient le mot "Groupe" ou "Gr", c'est la ligne d'en-tête.
-        if (/^(groupe|g\d|gr\.|gr\s|gr\d)/i.test(texte)) {
-          ressembleAEnTete = true;
-        }
-      }
-    }
-
-    // Si on a trouvé du texte, et que ce n'est PAS la ligne "Groupe", c'est la ligne des prénoms.
-    if (aDuTexte && !ressembleAEnTete) {
-      ligneNoms = row;
-      break;
-    }
-  }
-
-  // Si on n'a trouvé aucune ligne de noms, on renvoie un objet vide
-  if (!ligneNoms) return noms;
-
-  // Extraction et formatage des prénoms trouvés
-  for (let c = 4; c < ligneNoms.length; c++) {
-    const texte = (ligneNoms[c] || '').toString().trim();
-    if (!texte) continue; // Case vide pour ce groupe
-    
-    const groupeIndex = c - 4 + 1; // Col E (4) -> Groupe 1
-    // On sépare par virgule, point-virgule ou retour à la ligne
-    const listeNoms = texte.split(/[\n;,]+/).map(n => n.trim()).filter(Boolean);
-    if (listeNoms.length) noms[groupeIndex] = listeNoms.join(', ');
-  }
-  
-  return noms;
-}
-
 function formatHeuresParLot(heures) {
   if (!heures) return '';
   return heures.map((h, i) => 'Lot ' + (i + 1) + ' : ' + formatDuree(h)).join(' · ');
@@ -547,11 +482,8 @@ function afficherResultats(zoneResultats, items, sousTitre, options) {
     // s'afficheront normalement, avec la même mise en forme qu'un billet standard
     // (seule l'opacité du billet + le tampon signalent qu'il est reporté).
     const donneesAffichees = reporte ? (analyserCreneau(nettoyerTexteReporte(item.brut)) || {}) : item;
-    const nomsGroupe = options.nomsGroupesParClasse && item.classe
-      ? options.nomsGroupesParClasse[item.classe] && options.nomsGroupesParClasse[item.classe][item.groupeIndex]
-      : null;
     const titrePrincipal = afficherClasseGroupe && item.classe
-      ? item.classe + ' – Groupe ' + item.groupeIndex + (nomsGroupe ? ' (' + nomsGroupe + ')' : '')
+      ? item.classe + ' – Groupe ' + item.groupeIndex
       : (donneesAffichees.matiere || (reporte ? '' : 'Khôlle'));
 
     html += '<article class="billet' + (isMathsTB1 ? ' maths-tb1' : '') + (reporte ? ' reporte' : '') +
