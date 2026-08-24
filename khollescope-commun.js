@@ -566,7 +566,13 @@ function afficherResultats(zoneResultats, items, sousTitre, options) {
       '<div class="billet-corps">' +
       (titrePrincipal ? '<div class="billet-matiere">' + escapeHtml(titrePrincipal) + '</div>' : '') +
       '<div class="billet-details">' +
-      (donneesAffichees.horaireLigne ? '<span>🕐 ' + escapeHtml(donneesAffichees.horaireLigne) + '</span>' : '') +
+      (donneesAffichees.horaireLigne
+  ? '<span>🕐 ' + escapeHtml(
+      donneesAffichees.horaireLigne
+        .replace(/^(lundi|mardi|mercredi|jeudi|vendredi|samedi)\s*/i, '')
+        .trim()
+    ) + '</span>'
+  : '') +
       (!reporte && item.duree ? '<span>⏱ ' + formatDuree(item.duree) + '</span>' : '') +
       (donneesAffichees.salle ? '<span>📍 ' + escapeHtml(donneesAffichees.salle) + '</span>' : '') +
       (afficherClasseGroupe && donneesAffichees.matiere ? '<span>' + escapeHtml(donneesAffichees.matiere) + '</span>' : '') +
