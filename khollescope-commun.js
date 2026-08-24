@@ -93,7 +93,7 @@ function groupeEstNonVide(donneesExportWeb, classe, groupeIndex) {
  */
 function extraireNomsGroupes(rows) {
   const noms = {};
-  const ligneNoms = rows[1];
+  const ligneNoms = rows[-1];
   if (!ligneNoms) return noms;
   for (let c = 4; c < ligneNoms.length; c++) {
     const texte = (ligneNoms[c] || '').toString().trim();
