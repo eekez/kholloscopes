@@ -91,50 +91,92 @@ function groupeEstNonVide(donneesExportWeb, classe, groupeIndex) {
  * rejoints par ", " (ex: "Emilie, Charlotte, Paul").
  * Renvoie un objet { groupeIndex: "Emilie, Charlotte, Paul", ... }.
  */
+/**
+ * Extrait la liste des noms d'élèves de chaque groupe.
+ * S'arrête impérativement de chercher dès qu'une date de khôlle est rencontrée.
+ */
 function extraireNomsGroupes(rows) {
   const noms = {};
   let ligneNoms = null;
-
-  // On cherche la ligne contenant les prénoms dans les 4 premières lignes
-  for (let i = 0; i < Math.min(4, rows.length); i++) {
+  
+  // 1. On cherche d'abord la ligne d'en-tête (celle qui contient "Groupe 1")
+  let indexEnTete = -1;
+  for (let i = 0; i < Math.min(10, rows.length); i++) {
     const row = rows[i];
     if (!row || row.length < 5) continue;
-
-    // Si on trouve une date valide en colonne B (index 1), c'est qu'on a atteint 
-    // les créneaux de l'année. Les prénoms sont donc censés être avant. On arrête.
-    if (parserDateFr(row[1])) continue;
-
-    let aDuTexte = false;
+    
     let ressembleAEnTete = false;
-
-    // On parcourt les colonnes des groupes (à partir de la colonne E, index 4)
     for (let c = 4; c < row.length; c++) {
       const texte = (row[c] || '').toString().trim();
-      if (texte) {
-        aDuTexte = true;
-        // Si le texte ressemble à "Groupe 1", "Gr 2" ou "G1", c'est la ligne d'en-tête
-        if (/^(groupe|g\d|gr\.|gr\s|gr\d)/i.test(texte)) {
-          ressembleAEnTete = true;
-        }
+      if (/^(groupe|g\d|gr\.|gr\s|gr\d)/i.test(texte)) {
+        ressembleAEnTete = true;
+        break;
       }
     }
-
-    // Si la ligne contient du texte et n'est pas l'en-tête, c'est notre ligne de noms !
-    if (aDuTexte && !ressembleAEnTete) {
-      ligneNoms = row;
+    
+    if (ressembleAEnTete) {
+      indexEnTete = i;
       break;
     }
   }
 
-  // Si on n'a trouvé aucune ligne correspondante, on renvoie un objet vide
+  // 2. Si on a trouvé la ligne d'en-tête, la ligne des prénoms est la première 
+  // ligne non vide juste en dessous, AVANT les dates de khôlles.
+  if (indexEnTete !== -1) {
+    for (let i = indexEnTete + 1; i < Math.min(indexEnTete + 5, rows.length); i++) {
+      const row = rows[i];
+      if (!row || row.length < 5) continue;
+      
+      // STOP absolu : on a atteint le calendrier des khôlles (ex: "07/09/2026")
+      if (parserDateFr(row[1])) break;
+      
+      let aDuTexte = false;
+      for (let c = 4; c < row.length; c++) {
+        if ((row[c] || '').toString().trim()) {
+          aDuTexte = true;
+          break;
+        }
+      }
+      
+      if (aDuTexte) {
+        ligneNoms = row;
+        break;
+      }
+    }
+  } else {
+    // 3. Cas de secours (fréquent avec Google Sheets) : la ligne "Groupe" est invisible.
+    // On prend la toute première ligne contenant du texte, TOUJOURS AVANT les dates.
+    for (let i = 0; i < Math.min(5, rows.length); i++) {
+      const row = rows[i];
+      if (!row || row.length < 5) continue;
+      
+      // STOP absolu : on a atteint le calendrier des khôlles
+      if (parserDateFr(row[1])) break;
+      
+      let aDuTexte = false;
+      for (let c = 4; c < row.length; c++) {
+        if ((row[c] || '').toString().trim()) {
+          aDuTexte = true;
+          break;
+        }
+      }
+      if (aDuTexte) {
+        ligneNoms = row;
+        break;
+      }
+    }
+  }
+
+  // Si on n'a trouvé aucune ligne de noms, on renvoie un objet vide
   if (!ligneNoms) return noms;
 
-  // Extraction et nettoyage des prénoms trouvés
+  // 4. Extraction et formatage des prénoms
   for (let c = 4; c < ligneNoms.length; c++) {
     const texte = (ligneNoms[c] || '').toString().trim();
     if (!texte) continue;
     
     const groupeIndex = c - 4 + 1;
+    // On sépare par virgule, point-virgule ou retour à la ligne et on normalise
     const listeNoms = texte.split(/[\n;,]+/).map(n => n.trim()).filter(Boolean);
     if (listeNoms.length) noms[groupeIndex] = listeNoms.join(', ');
   }
