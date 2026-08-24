@@ -81,6 +81,8 @@ function groupeEstNonVide(donneesExportWeb, classe, groupeIndex) {
   return donneesExportWeb.groupesNonVides.has(classe + '|' + groupeIndex);
 }
 
+
+
 /**
  * Extrait, pour un onglet élève déjà chargé (rows), la liste des noms
  * d'élèves de chaque groupe à partir de la ligne 2 du tableau (index 1,
@@ -93,15 +95,24 @@ function groupeEstNonVide(donneesExportWeb, classe, groupeIndex) {
  */
 function extraireNomsGroupes(rows) {
   const noms = {};
-  const ligneNoms = rows[-1];
+  const ligneNoms = rows[1]; // ligne 2 réelle de la feuille
   if (!ligneNoms) return noms;
+
   for (let c = 4; c < ligneNoms.length; c++) {
     const texte = (ligneNoms[c] || '').toString().trim();
     if (!texte) continue;
+
     const groupeIndex = c - 4 + 1;
-    const listeNoms = texte.split(/[\n;,]+/).map(n => n.trim()).filter(Boolean);
-    if (listeNoms.length) noms[groupeIndex] = listeNoms.join(', ');
+    const listeNoms = texte
+      .split(/[\n;,]+/)
+      .map(n => n.trim())
+      .filter(Boolean);
+
+    if (listeNoms.length) {
+      noms[groupeIndex] = listeNoms.join(', ');
+    }
   }
+
   return noms;
 }
 
@@ -153,9 +164,10 @@ function chargerOnglet(nomOnglet) {
       }
     };
 
-    const url = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
-      '/gviz/tq?tqx=responseHandler:' + nomCallback +
-      '&sheet=' + encodeURIComponent(nomOnglet);
+	const url = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+	  '/gviz/tq?tqx=responseHandler:' + nomCallback +
+	  '&headers=0' +
+	  '&sheet=' + encodeURIComponent(nomOnglet);
 
     const script = document.createElement('script');
     script.id = idScript;
