@@ -286,6 +286,35 @@ function parserDateFr(s) {
   return null;
 }
 
+function calculerDateCreneau(dateLundi, horaireLigne) {
+  if (!dateLundi || !horaireLigne) return dateLundi;
+
+  const texte = horaireLigne
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  const jours = [
+    { motifs: ['lundi', 'lun'], decalage: 0 },
+    { motifs: ['mardi', 'mar'], decalage: 1 },
+    { motifs: ['mercredi', 'mer'], decalage: 2 },
+    { motifs: ['jeudi', 'jeu'], decalage: 3 },
+    { motifs: ['vendredi', 'ven'], decalage: 4 },
+    { motifs: ['samedi', 'sam'], decalage: 5 },
+  ];
+
+  const jour = jours.find(j =>
+    j.motifs.some(motif => new RegExp('\\b' + motif + '\\b').test(texte))
+  );
+
+  if (!jour) return dateLundi;
+
+  const dateCreneau = new Date(dateLundi.getTime());
+  dateCreneau.setDate(dateCreneau.getDate() + jour.decalage);
+
+  return dateCreneau;
+}
+
 function formatBilletDate(date) {
   return {
     jour: JOURS_COURT[date.getDay()],
@@ -346,14 +375,14 @@ function extraireCreneaux(rows, classeNom, options) {
         if (!motif.test(creneau.nom)) continue;
       }
 
-      const item = {
-        date: derniereDateConnue,
-        numeroSemaine: dernierNumeroSemaine,
-        libelleSemaine: dernierLibelleSemaine,
-        groupeIndex: groupeIndex,
-        classe: classeNom,
-        ...creneau,
-      };
+	 const item = {
+	   date: calculerDateCreneau(derniereDateConnue, creneau.horaireLigne),
+	   numeroSemaine: dernierNumeroSemaine,
+	   libelleSemaine: dernierLibelleSemaine,
+	   groupeIndex: groupeIndex,
+	   classe: classeNom,
+	   ...creneau,
+	 };
       item.duree = calculerDuree(item, options.pivotMathsTB1);
       resultats.push(item);
     }
@@ -497,8 +526,9 @@ function afficherResultats(zoneResultats, items, sousTitre, options) {
       // de début : sinon, en plein milieu d'une semaine de khôlles, le marqueur
       // sautait déjà à la semaine suivante alors que la semaine en cours n'est pas
       // encore terminée.
-      const finDeSemaine = new Date(item.date.getTime());
-      finDeSemaine.setDate(finDeSemaine.getDate() + 4);
+	 const debutDeSemaine = item.dateSemaine || item.date;
+	 const finDeSemaine = new Date(debutDeSemaine.getTime());
+	 finDeSemaine.setDate(finDeSemaine.getDate() + 4);
       if (!semaineCouranteTrouvee && finDeSemaine >= aujourdHui) {
         idSemaineCourante = 'semaine-courante';
         idAttribut = ' id="' + idSemaineCourante + '"';
