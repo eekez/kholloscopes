@@ -337,6 +337,7 @@ function extraireCreneaux(rows, classeNom, options) {
 
   for (let r = 0; r < rows.length; r++) {
     const row = rows[r];
+	console.log("LIGNE", r, row);
     if (!row || row.length < 5) continue;
 
     const numSemaineCell = parseInt(row[0], 10);
@@ -376,12 +377,13 @@ function extraireCreneaux(rows, classeNom, options) {
       }
 
 	 const item = {
-	   date: calculerDateCreneau(derniereDateConnue, creneau.horaireLigne),
-	   numeroSemaine: dernierNumeroSemaine,
-	   libelleSemaine: dernierLibelleSemaine,
-	   groupeIndex: groupeIndex,
-	   classe: classeNom,
-	   ...creneau,
+		  ...creneau,
+		  date: calculerDateCreneau(derniereDateConnue, creneau.horaireLigne),
+		  dateSemaine: new Date(derniereDateConnue.getTime()),
+		  numeroSemaine: dernierNumeroSemaine,
+		  libelleSemaine: dernierLibelleSemaine,
+		  groupeIndex: groupeIndex,
+		  classe: classeNom,
 	 };
       item.duree = calculerDuree(item, options.pivotMathsTB1);
       resultats.push(item);
