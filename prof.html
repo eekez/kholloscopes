@@ -71,8 +71,10 @@
     try {
       const exportWeb = await chargerExportWeb();
       const toutes = [];
+      const nomsGroupesParClasse = {};
       for (const classe of Object.keys(ONGLETS)) {
         const rows = await chargerOnglet(ONGLETS[classe]);
+        nomsGroupesParClasse[classe] = extraireNomsGroupes(rows);
         const items = extraireCreneaux(rows, classe, {
           nomRecherche: nom,
           pivotMathsTB1: exportWeb.pivot,
@@ -81,7 +83,7 @@
         toutes.push(...items);
       }
       afficherResultats(zoneResultats, toutes, 'Planning de ' + nom,
-        { afficherClasseGroupe: true, afficherNomProf: false });
+        { afficherClasseGroupe: true, afficherNomProf: false, nomsGroupesParClasse });
       afficherHeuresParLot(nom, exportWeb);
     } catch (e) {
       afficherErreur(zoneResultats, 'Impossible de charger le planning pour le moment. Vérifiez votre connexion, ou réessayez plus tard.');

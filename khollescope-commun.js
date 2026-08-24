@@ -81,6 +81,30 @@ function groupeEstNonVide(donneesExportWeb, classe, groupeIndex) {
   return donneesExportWeb.groupesNonVides.has(classe + '|' + groupeIndex);
 }
 
+/**
+ * Extrait, pour un onglet élève déjà chargé (rows), la liste des noms
+ * d'élèves de chaque groupe à partir de la ligne 2 du tableau (index 1,
+ * la ligne 1 étant l'en-tête) : une colonne par groupe, à partir de la
+ * colonne E (index 4) — même convention de colonnes que les créneaux.
+ * Les noms peuvent être séparés par une virgule, un point-virgule ou un
+ * retour à la ligne dans la cellule ; on les renvoie normalisés et
+ * rejoints par ", " (ex: "Emilie, Charlotte, Paul").
+ * Renvoie un objet { groupeIndex: "Emilie, Charlotte, Paul", ... }.
+ */
+function extraireNomsGroupes(rows) {
+  const noms = {};
+  const ligneNoms = rows[1];
+  if (!ligneNoms) return noms;
+  for (let c = 4; c < ligneNoms.length; c++) {
+    const texte = (ligneNoms[c] || '').toString().trim();
+    if (!texte) continue;
+    const groupeIndex = c - 4 + 1;
+    const listeNoms = texte.split(/[\n;,]+/).map(n => n.trim()).filter(Boolean);
+    if (listeNoms.length) noms[groupeIndex] = listeNoms.join(', ');
+  }
+  return noms;
+}
+
 function formatHeuresParLot(heures) {
   if (!heures) return '';
   return heures.map((h, i) => 'Lot ' + (i + 1) + ' : ' + formatDuree(h)).join(' · ');
@@ -482,8 +506,11 @@ function afficherResultats(zoneResultats, items, sousTitre, options) {
     // s'afficheront normalement, avec la même mise en forme qu'un billet standard
     // (seule l'opacité du billet + le tampon signalent qu'il est reporté).
     const donneesAffichees = reporte ? (analyserCreneau(nettoyerTexteReporte(item.brut)) || {}) : item;
+    const nomsGroupe = options.nomsGroupesParClasse && item.classe
+      ? options.nomsGroupesParClasse[item.classe] && options.nomsGroupesParClasse[item.classe][item.groupeIndex]
+      : null;
     const titrePrincipal = afficherClasseGroupe && item.classe
-      ? item.classe + ' – Groupe ' + item.groupeIndex
+      ? item.classe + ' – Groupe ' + item.groupeIndex + (nomsGroupe ? ' (' + nomsGroupe + ')' : '')
       : (donneesAffichees.matiere || (reporte ? '' : 'Khôlle'));
 
     html += '<article class="billet' + (isMathsTB1 ? ' maths-tb1' : '') + (reporte ? ' reporte' : '') +
