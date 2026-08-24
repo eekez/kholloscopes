@@ -82,22 +82,9 @@ function groupeEstNonVide(donneesExportWeb, classe, groupeIndex) {
 }
 
 /**
- * Extrait, pour un onglet élève déjà chargé (rows), la liste des noms
- * d'élèves de chaque groupe à partir de la ligne 2 du tableau (index 1,
- * la ligne 1 étant l'en-tête) : une colonne par groupe, à partir de la
- * colonne E (index 4) — même convention de colonnes que les créneaux.
- * Les noms peuvent être séparés par une virgule, un point-virgule ou un
- * retour à la ligne dans la cellule ; on les renvoie normalisés et
- * rejoints par ", " (ex: "Emilie, Charlotte, Paul").
- * Renvoie un objet { groupeIndex: "Emilie, Charlotte, Paul", ... }.
- */
-/**
- * Extrait la liste des noms d'élèves de chaque groupe.
- * S'arrête impérativement de chercher dès qu'une date de khôlle est rencontrée.
- */
-/**
  * Extrait la liste des noms d'élèves de chaque groupe (Ligne 2 de l'onglet).
- * Gère le décalage de gviz (la ligne 2 est soit à l'index 0, soit à l'index 1).
+ * S'arrête impérativement de chercher dès qu'une date ou un numéro de semaine
+ * est rencontré, pour éviter de confondre les khôlles avec des prénoms.
  */
 function extraireNomsGroupes(rows) {
   const noms = {};
@@ -108,6 +95,18 @@ function extraireNomsGroupes(rows) {
     const row = rows[i];
     if (!row || row.length < 5) continue; // Il faut au moins aller jusqu'à la colonne E (index 4)
 
+    // --- SÉCURITÉ AJOUTÉE ---
+    // Si la colonne A (index 0) contient un numéro de semaine valide, ou si la
+    // colonne B (index 1) contient une date, c'est que nous sommes dans le planning.
+    // Cela arrive quand la ligne des prénoms a été laissée vide.
+    const estNumeroSemaine = !isNaN(parseInt(row[0], 10));
+    const estUneDate = parserDateFr(row[1]) !== null;
+    
+    if (estNumeroSemaine || estUneDate) {
+      break; // On a atteint le calendrier, on arrête de chercher !
+    }
+    // -------------------------
+
     let ressembleAEnTete = false;
     let aDuTexte = false;
 
@@ -116,17 +115,17 @@ function extraireNomsGroupes(rows) {
       const texte = (row[c] || '').toString().trim();
       if (texte) {
         aDuTexte = true;
-        // Si la case contient le mot "Groupe" ou "Gr", c'est la ligne d'en-tête, on l'ignore.
+        // Si la case contient le mot "Groupe" ou "Gr", c'est la ligne d'en-tête.
         if (/^(groupe|g\d|gr\.|gr\s|gr\d)/i.test(texte)) {
           ressembleAEnTete = true;
         }
       }
     }
 
-    // Si on a trouvé du texte, et que ce n'est PAS la ligne "Groupe", c'est forcément la ligne des prénoms !
+    // Si on a trouvé du texte, et que ce n'est PAS la ligne "Groupe", c'est la ligne des prénoms.
     if (aDuTexte && !ressembleAEnTete) {
       ligneNoms = row;
-      break; // On a trouvé, on arrête de chercher.
+      break;
     }
   }
 
