@@ -40,7 +40,7 @@
   <section class="panel" aria-label="Rechercher mon planning">
     <div class="champ">
       <label for="input-nom-prof">Votre nom</label>
-      <input type="text" id="input-nom-prof" placeholder="Ex : Martin">
+      <input type="text" id="input-nom-prof" placeholder="Ex : Laplanche">
     </div>
     <button type="button" class="btn-rechercher" id="btn-rechercher">Afficher mon planning</button>
   </section>
@@ -52,7 +52,7 @@
   Les données proviennent du colloscope tenu par l'établissement — en cas d'écart constaté, merci de le signaler pour correction.
 </footer>
 
-<script src="khollescope-commun.js?v=2"></script>
+<script src="khollescope-commun.js?v=4"></script>
 <script>
 (function () {
   "use strict";
@@ -61,12 +61,15 @@
   const btnRechercher = document.getElementById('btn-rechercher');
   const zoneResultats = document.getElementById('zone-resultats');
 
+  const CLE_STOCKAGE_NOM = 'khollescope_nom_prof';
+
   async function rechercher() {
     const nom = inputNomProf.value.trim();
     if (!nom) {
       afficherErreur(zoneResultats, 'Merci de saisir un nom.');
       return;
     }
+    localStorage.setItem(CLE_STOCKAGE_NOM, nom);
     afficherChargement(zoneResultats);
     try {
       const exportWeb = await chargerExportWeb();
@@ -125,6 +128,14 @@
   inputNomProf.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') rechercher();
   });
+
+  // Présélection + lancement automatique si un nom est déjà mémorisé sur cet
+  // appareil (l'utilisateur n'a plus besoin de le ressaisir à chaque ouverture).
+  const nomMemorise = localStorage.getItem(CLE_STOCKAGE_NOM);
+  if (nomMemorise) {
+    inputNomProf.value = nomMemorise;
+    rechercher();
+  }
 
   initBandeauInstallation('Khôlles Profs');
 
