@@ -63,6 +63,11 @@
 
   const CLE_STOCKAGE_NOM = 'khollescope_nom_prof';
 
+  // Les khôlles ne sont affichées qu'à partir de cette date (semaine de la
+  // rentrée) : toute khôlle antérieure (test, khôlle blanche, etc.) reste
+  // masquée sur cette page. À ajuster chaque année.
+  const DATE_DEBUT_AFFICHAGE = new Date(2026, 8, 7); // 7 septembre 2026
+
   async function rechercher() {
     const nom = inputNomProf.value.trim();
     if (!nom) {
@@ -85,7 +90,8 @@
         });
         toutes.push(...items);
       }
-      afficherResultats(zoneResultats, toutes, 'Planning de ' + nom,
+      const toutesFiltrees = toutes.filter(item => item.date >= DATE_DEBUT_AFFICHAGE);
+      afficherResultats(zoneResultats, toutesFiltrees, 'Planning de ' + nom,
         { afficherClasseGroupe: true, afficherNomProf: false, nomsGroupesParClasse });
       afficherHeuresParLot(nom, exportWeb);
       afficherDebugNomsSiActive(nomsGroupesParClasse);
