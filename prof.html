@@ -90,7 +90,13 @@
         });
         toutes.push(...items);
       }
-      const toutesFiltrees = toutes.filter(item => item.date >= DATE_DEBUT_AFFICHAGE);
+	 const toutesFiltrees = toutes.filter(item => {
+		  const d = new Date(item.date.getTime());
+		  d.setHours(0, 0, 0, 0);
+		  const dSemaine = item.dateSemaine ? new Date(item.dateSemaine.getTime()) : d;
+		  dSemaine.setHours(0, 0, 0, 0);
+		  return d >= DATE_DEBUT_AFFICHAGE || dSemaine >= DATE_DEBUT_AFFICHAGE;
+		});
       afficherResultats(zoneResultats, toutesFiltrees, 'Planning de ' + nom,
         { afficherClasseGroupe: true, afficherNomProf: false, nomsGroupesParClasse });
       afficherHeuresParLot(nom, exportWeb);

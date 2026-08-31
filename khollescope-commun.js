@@ -215,7 +215,11 @@ function analyserCreneau(texte) {
   let matiere = '', horaireLigne = '', salleLigne = '';
   const ressembleHoraire = (s) => /\d{1,2}h|lundi|mardi|mercredi|jeudi|vendredi|samedi/i.test(s);
 
-  if (lignes.length >= 3) {
+  if (lignes.length >= 4) {
+    matiere = lignes[0];
+    horaireLigne = lignes[1];
+    salleLigne = lignes[2] + ' - ' + lignes[3];
+  } else if (lignes.length === 3) {
     matiere = lignes[0];
     horaireLigne = lignes[1];
     salleLigne = lignes[2];
@@ -244,8 +248,6 @@ function analyserCreneau(texte) {
   const matchCivilite = nom.match(/^(M\.|Mme|Mr|Mlle)\s*/i);
   if (matchCivilite) {
     civilite = matchCivilite[1];
-    // Normalisation légère (M -> M., MME -> Mme) pour un affichage homogène
-    // même si la saisie d'origine variait en casse ou ponctuation.
     const civiliteMinuscule = civilite.toLowerCase().replace('.', '');
     if (civiliteMinuscule === 'm') civilite = 'M.';
     else if (civiliteMinuscule === 'mme') civilite = 'Mme';
@@ -271,18 +273,23 @@ function parseNombreFr(valeur) {
 
 function parserDateFr(s) {
   if (!s) return null;
-  s = s.trim();
-  // Format affiché habituel : JJ/MM/AAAA ou J/M/AA (Google Sheets peut omettre les zéros
-  // de tête et abréger l'année sur 2 chiffres selon le format régional du navigateur).
+  s = String(s).trim();
+  
   const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/);
   if (m) {
     let annee = parseInt(m[3], 10);
-    if (m[3].length === 2) annee += 2000; // "26" -> 2026 (toujours années 2000+ dans ce contexte)
+    if (m[3].length === 2) annee += 2000;
     return new Date(annee, parseInt(m[2], 10) - 1, parseInt(m[1], 10));
   }
-  // Format brut gviz quand la valeur formatée n'est pas disponible : Date(2026,8,7)
-  const m2 = s.match(/^Date\((\d{4}),(\d{1,2}),(\d{1,2})/);
-  if (m2) return new Date(parseInt(m2[1], 10), parseInt(m2[2], 10), parseInt(m2[3], 10));
+
+  const m2 = s.match(/^(\d{1,2})\/(\d{1,2})$/);
+  if (m2) {
+    return new Date(2026, parseInt(m2[2], 10) - 1, parseInt(m2[1], 10));
+  }
+
+  const m3 = s.match(/^Date\((\d{4}),(\d{1,2}),(\d{1,2})/);
+  if (m3) return new Date(parseInt(m3[1], 10), parseInt(m3[2], 10), parseInt(m3[3], 10));
+  
   return null;
 }
 
@@ -359,15 +366,18 @@ function extraireCreneaux(rows, classeNom, options) {
 
   for (let r = 0; r < rows.length; r++) {
     const row = rows[r];
-	console.log("LIGNE", r, row);
-    if (!row || row.length < 5) continue;
+    if (!row || row.length === 0) continue;
 
+    // 1. Mise à jour prioritaire du numéro de semaine et de la date du lundi
     const numSemaineCell = parseInt(row[0], 10);
     if (!isNaN(numSemaineCell)) dernierNumeroSemaine = numSemaineCell;
 
     const dateCell = parserDateFr(row[1]);
     if (dateCell) derniereDateConnue = dateCell;
     if (!derniereDateConnue) continue;
+
+    // 2. Ignorer la ligne si aucune colonne de groupe (index >= 4) n'est présente
+    if (row.length < 5) continue;
 
     const colonnesACheck = options.colonneIndex !== undefined
       ? [options.colonneIndex]
@@ -394,15 +404,15 @@ function extraireCreneaux(rows, classeNom, options) {
         if (!motif.test(creneau.nom)) continue;
       }
 
-	 const item = {
-		  ...creneau,
-		  date: calculerDateCreneau(derniereDateConnue, creneau.horaireLigne),
-		  dateSemaine: new Date(derniereDateConnue.getTime()),
-		  numeroSemaine: dernierNumeroSemaine,
-		  libelleSemaine: formaterLibelleSemaine(derniereDateConnue),
-		  groupeIndex: groupeIndex,
-		  classe: classeNom,
-	 };
+      const item = {
+        ...creneau,
+        date: calculerDateCreneau(derniereDateConnue, creneau.horaireLigne),
+        dateSemaine: new Date(derniereDateConnue.getTime()),
+        numeroSemaine: dernierNumeroSemaine,
+        libelleSemaine: formaterLibelleSemaine(derniereDateConnue),
+        groupeIndex: groupeIndex,
+        classe: classeNom,
+      };
       item.duree = calculerDuree(item, options.pivotMathsTB1);
       resultats.push(item);
     }
