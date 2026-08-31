@@ -323,6 +323,29 @@ function formatBilletDate(date) {
   };
 }
 
+const MOIS_LONG = ["janvier","février","mars","avril","mai","juin","juillet",
+  "août","septembre","octobre","novembre","décembre"];
+
+/**
+ * Calcule le libellé d'une semaine ("7 au 11 septembre") à partir de la date du
+ * lundi. On calcule ce libellé nous-mêmes plutôt que de faire confiance au texte
+ * de la colonne D de la feuille : ce texte est parfois associé à la mauvaise
+ * ligne (cellule fusionnée mal placée, saisie décalée...), ce qui provoquait des
+ * en-têtes de semaine affichant la mauvaise période — et, par ricochet, une
+ * semaine entière qui semblait avoir disparu (son en-tête étant absorbé par la
+ * précédente). La date, elle, est fiable : on s'appuie dessus.
+ */
+function formaterLibelleSemaine(dateLundi) {
+  if (!dateLundi) return '';
+  const dateVendredi = new Date(dateLundi.getTime());
+  dateVendredi.setDate(dateVendredi.getDate() + 4);
+  if (dateLundi.getMonth() === dateVendredi.getMonth()) {
+    return dateLundi.getDate() + ' au ' + dateVendredi.getDate() + ' ' + MOIS_LONG[dateLundi.getMonth()];
+  }
+  return dateLundi.getDate() + ' ' + MOIS_LONG[dateLundi.getMonth()] +
+    ' au ' + dateVendredi.getDate() + ' ' + MOIS_LONG[dateVendredi.getMonth()];
+}
+
 /**
  * Construit la liste des créneaux à partir des lignes CSV d'un onglet élève,
  * pour UN groupe (options.colonneIndex) ou en cherchant un NOM dans toutes les
@@ -333,7 +356,6 @@ function extraireCreneaux(rows, classeNom, options) {
   const resultats = [];
   let derniereDateConnue = null;
   let dernierNumeroSemaine = null;
-  let dernierLibelleSemaine = null;
 
   for (let r = 0; r < rows.length; r++) {
     const row = rows[r];
@@ -342,10 +364,6 @@ function extraireCreneaux(rows, classeNom, options) {
 
     const numSemaineCell = parseInt(row[0], 10);
     if (!isNaN(numSemaineCell)) dernierNumeroSemaine = numSemaineCell;
-
-    if (row[3] && row[3].trim() && !row[3].toUpperCase().includes('VACANCES')) {
-      dernierLibelleSemaine = row[3].trim();
-    }
 
     const dateCell = parserDateFr(row[1]);
     if (dateCell) derniereDateConnue = dateCell;
@@ -381,7 +399,7 @@ function extraireCreneaux(rows, classeNom, options) {
 		  date: calculerDateCreneau(derniereDateConnue, creneau.horaireLigne),
 		  dateSemaine: new Date(derniereDateConnue.getTime()),
 		  numeroSemaine: dernierNumeroSemaine,
-		  libelleSemaine: dernierLibelleSemaine,
+		  libelleSemaine: formaterLibelleSemaine(derniereDateConnue),
 		  groupeIndex: groupeIndex,
 		  classe: classeNom,
 	 };
