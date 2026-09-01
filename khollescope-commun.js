@@ -364,19 +364,50 @@ function formaterLibelleSemaine(dateLundi) {
  */
 function extraireCreneaux(rows, classeNom, options) {
   const resultats = [];
-  let derniereDateConnue = null;
-  let dernierNumeroSemaine = null;
+
+  // Pré-passe : sur certains onglets, un même "bloc" de semaine est réparti sur
+  // plusieurs lignes, et la vraie date (colonne B) n'est PAS forcément sur la
+  // même ligne que le numéro de semaine (colonne A) — elle peut arriver une ou
+  // plusieurs lignes plus loin, après une partie des créneaux de cette semaine.
+  // Un suivi séquentiel naïf (mettre à jour la date "au fil de l'eau" ligne par
+  // ligne) date alors à tort les créneaux situés AVANT la ligne-date du bloc
+  // avec la date de la semaine PRÉCÉDENTE (décalage d'une semaine en moins).
+  // On regroupe donc d'abord les lignes par bloc — un bloc commence à chaque
+  // ligne où un numéro de semaine apparaît en colonne A — puis on cherche la
+  // date n'importe où dans le bloc, pour l'appliquer rétroactivement à TOUTES
+  // les lignes du bloc (y compris celles situées avant la ligne-date elle-même).
+  const dateParLigne = new Array(rows.length).fill(null);
+  const semaineParLigne = new Array(rows.length).fill(null);
+  {
+    let indexDebutBloc = 0;
+    let dateBloc = null;
+    let numSemaineBloc = null;
+    for (let r = 0; r <= rows.length; r++) {
+      const row = r < rows.length ? rows[r] : null;
+      const numSemaineCell = row ? parseInt(row[0], 10) : NaN;
+      const nouveauBloc = r === rows.length || !isNaN(numSemaineCell);
+
+      if (nouveauBloc && r !== indexDebutBloc) {
+        for (let i = indexDebutBloc; i < r; i++) {
+          dateParLigne[i] = dateBloc;
+          semaineParLigne[i] = numSemaineBloc;
+        }
+        indexDebutBloc = r;
+      }
+      if (r === rows.length) break;
+
+      if (!isNaN(numSemaineCell)) numSemaineBloc = numSemaineCell;
+      const dateCell = row ? parserDateFr(row[1]) : null;
+      if (dateCell) dateBloc = dateCell;
+    }
+  }
 
   for (let r = 0; r < rows.length; r++) {
     const row = rows[r];
     if (!row || row.length === 0) continue;
 
-    // 1. Mise à jour prioritaire du numéro de semaine et de la date du lundi
-    const numSemaineCell = parseInt(row[0], 10);
-    if (!isNaN(numSemaineCell)) dernierNumeroSemaine = numSemaineCell;
-
-    const dateCell = parserDateFr(row[1]);
-    if (dateCell) derniereDateConnue = dateCell;
+    const derniereDateConnue = dateParLigne[r];
+    const dernierNumeroSemaine = semaineParLigne[r];
     if (!derniereDateConnue) continue;
 
     // 2. Ignorer la ligne si aucune colonne de groupe (index >= 4) n'est présente
