@@ -387,7 +387,7 @@ function extraireCreneaux(rows, classeNom, options) {
     for (; r < rows.length; r++) {
       const row = rows[r];
       const numSemaineCell = row ? parseInt(row[0], 10) : NaN;
-      if (!isNaN(numSemaineCell) || r >= 4) break;
+      if (!isNaN(numSemaineCell) || r >= 2) break;
       const dateCell = row ? parserDateFr(row[1]) : null;
       if (dateCell) dateCourante = dateCell;
       dateParLigne[r] = dateCourante;
@@ -432,7 +432,7 @@ function extraireCreneaux(rows, classeNom, options) {
 
     const colonnesACheck = options.colonneIndex !== undefined
       ? [options.colonneIndex]
-      : row.map((_, i) => i).filter(i => i >= 4);
+      : row.map((_, i) => i).filter(i => i >= 2);
 
     for (const c of colonnesACheck) {
       const texte = row[c];
