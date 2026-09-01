@@ -379,10 +379,27 @@ function extraireCreneaux(rows, classeNom, options) {
   const dateParLigne = new Array(rows.length).fill(null);
   const semaineParLigne = new Array(rows.length).fill(null);
   {
-    let indexDebutBloc = 0;
-    let dateBloc = null;
+    // Avant le tout premier numéro de semaine (en-têtes, ligne de test...) : on
+    // suit la date au fil de l'eau, sans rétro-application, pour ne pas
+    // transformer ces lignes en fausses khôlles.
+    let r = 0;
+    let dateCourante = null;
+    for (; r < rows.length; r++) {
+      const row = rows[r];
+      const numSemaineCell = row ? parseInt(row[0], 10) : NaN;
+      if (!isNaN(numSemaineCell)) break;
+      const dateCell = row ? parserDateFr(row[1]) : null;
+      if (dateCell) dateCourante = dateCell;
+      dateParLigne[r] = dateCourante;
+    }
+
+    // À partir du premier numéro de semaine : regroupement par bloc, la date
+    // pouvant être trouvée n'importe où dans le bloc (voir commentaire plus
+    // haut sur le décalage entre ligne "numéro" et ligne "date").
+    let indexDebutBloc = r;
+    let dateBloc = dateCourante;
     let numSemaineBloc = null;
-    for (let r = 0; r <= rows.length; r++) {
+    for (; r <= rows.length; r++) {
       const row = r < rows.length ? rows[r] : null;
       const numSemaineCell = row ? parseInt(row[0], 10) : NaN;
       const nouveauBloc = r === rows.length || !isNaN(numSemaineCell);
