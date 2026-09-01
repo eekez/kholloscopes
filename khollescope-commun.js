@@ -432,7 +432,7 @@ function extraireCreneaux(rows, classeNom, options) {
 
     const colonnesACheck = options.colonneIndex !== undefined
       ? [options.colonneIndex]
-      : row.map((_, i) => i).filter(i => i >= 2);
+      : row.map((_, i) => i).filter(i => i >= 4);
 
     for (const c of colonnesACheck) {
       const texte = row[c];
@@ -575,105 +575,230 @@ function afficherErreur(zoneResultats, message) {
 
 function afficherResultats(zoneResultats, items, sousTitre, options) {
   options = options || {};
+
   if (items.length === 0) {
     zoneResultats.innerHTML =
       '<div class="etat">Aucune khôlle trouvée pour le moment.<br>Le planning sera mis à jour au fil de l\'année.</div>';
     return;
   }
+
   items.sort((a, b) => a.date - b.date);
 
-  let html = '<div class="resultats-entete"><h2>' + escapeHtml(sousTitre) + '</h2>' +
-    '<span class="compte">' + items.length + (items.length > 1 ? ' khôlles' : ' khôlle') + '</span></div>';
-
-  let derniereSemaineAffichee = null;
-  let idSemaineCourante = null;
-  let semaineCouranteTrouvee = false;
   const aujourdHui = new Date();
   aujourdHui.setHours(0, 0, 0, 0);
 
-  for (const item of items) {
-    const d = formatBilletDate(item.date);
-    const isMathsTB1 = estMathsTB1(item);
-    const reporte = estReporte(item);
-    const afficherClasseGroupe = options.afficherClasseGroupe !== false;
-    const afficherNomProf = options.afficherNomProf !== false;
+  // Une semaine est considérée comme passée lorsque son vendredi est passé.
+  // Cela permet de continuer à afficher les khôlles restantes d'une semaine
+  // en cours, même si son lundi ou son mardi est déjà passé.
+  function semaineEstPassee(item) {
+    const debut = item.dateSemaine || item.date;
+    const fin = new Date(debut.getTime());
+    fin.setDate(fin.getDate() + 4);
+    fin.setHours(23, 59, 59, 999);
+    return fin < aujourdHui;
+  }
 
-    if (item.libelleSemaine && item.libelleSemaine !== derniereSemaineAffichee) {
-      // Premier en-tête de semaine dont la date n'est pas encore entièrement passée
-      // (la khôlle elle-même, ou la fin de sa semaine si on raisonne large) : on lui
-      // donne un identifiant pour pouvoir y défiler automatiquement à l'ouverture.
-      let idAttribut = '';
-      // On compare à la FIN de la semaine (vendredi, +4 jours) plutôt qu'à sa date
-      // de début : sinon, en plein milieu d'une semaine de khôlles, le marqueur
-      // sautait déjà à la semaine suivante alors que la semaine en cours n'est pas
-      // encore terminée.
-	 const debutDeSemaine = item.dateSemaine || item.date;
-	 const finDeSemaine = new Date(debutDeSemaine.getTime());
-	 finDeSemaine.setDate(finDeSemaine.getDate() + 4);
-      if (!semaineCouranteTrouvee && finDeSemaine >= aujourdHui) {
-        idSemaineCourante = 'semaine-courante';
-        idAttribut = ' id="' + idSemaineCourante + '"';
-        semaineCouranteTrouvee = true;
+  // On conserve l'ensemble des items, mais on n'affiche par défaut que
+  // ceux appartenant à une semaine encore en cours ou à venir.
+  const itemsFuturs = items.filter(item => !semaineEstPassee(item));
+  const itemsPasses = items.filter(item => semaineEstPassee(item));
+
+  let afficherAnciens = false;
+
+  function construireAffichage() {
+    const itemsAffiches = afficherAnciens
+      ? items
+      : itemsFuturs;
+
+    let html =
+      '<div class="resultats-entete"><h2>' + escapeHtml(sousTitre) + '</h2>' +
+      '<span class="compte">' + itemsAffiches.length +
+      (itemsAffiches.length > 1 ? ' khôlles' : ' khôlle') +
+      '</span></div>';
+
+    // Bouton permettant de faire apparaître les semaines passées.
+    if (itemsPasses.length > 0) {
+      html +=
+        '<button type="button" class="btn-semaines-passees" id="btn-semaines-passees">' +
+        (afficherAnciens
+          ? 'Masquer les semaines précédentes'
+          : 'Afficher les semaines précédentes') +
+        '</button>';
+    }
+
+    let derniereSemaineAffichee = null;
+    let idSemaineCourante = null;
+    let semaineCouranteTrouvee = false;
+
+    for (const item of itemsAffiches) {
+      const d = formatBilletDate(item.date);
+      const isMathsTB1 = estMathsTB1(item);
+      const reporte = estReporte(item);
+      const afficherClasseGroupe = options.afficherClasseGroupe !== false;
+      const afficherNomProf = options.afficherNomProf !== false;
+
+      if (item.libelleSemaine &&
+          item.libelleSemaine !== derniereSemaineAffichee) {
+
+        let idAttribut = '';
+
+        const debutDeSemaine = item.dateSemaine || item.date;
+        const finDeSemaine = new Date(debutDeSemaine.getTime());
+        finDeSemaine.setDate(finDeSemaine.getDate() + 4);
+
+        if (!semaineCouranteTrouvee && finDeSemaine >= aujourdHui) {
+          idSemaineCourante = 'semaine-courante';
+          idAttribut = ' id="' + idSemaineCourante + '"';
+          semaineCouranteTrouvee = true;
+        }
+
+        html +=
+          '<div class="entete-semaine"' + idAttribut + '>' +
+          escapeHtml(item.libelleSemaine) +
+          '</div>';
+
+        derniereSemaineAffichee = item.libelleSemaine;
       }
-      html += '<div class="entete-semaine"' + idAttribut + '>' + escapeHtml(item.libelleSemaine) + '</div>';
-      derniereSemaineAffichee = item.libelleSemaine;
+
+      const couleurAccent = afficherClasseGroupe
+        ? couleurClasse(item.classe)
+        : couleurMatiere(item.matiere);
+
+      const donneesAffichees = reporte
+        ? (analyserCreneau(nettoyerTexteReporte(item.brut)) || {})
+        : item;
+
+      const nomsGroupe =
+        options.nomsGroupesParClasse && item.classe
+          ? options.nomsGroupesParClasse[item.classe] &&
+            options.nomsGroupesParClasse[item.classe][item.groupeIndex]
+          : null;
+
+      const titrePrincipal =
+        afficherClasseGroupe && item.classe
+          ? item.classe + ' – Groupe ' + item.groupeIndex +
+            (nomsGroupe ? ' (' + nomsGroupe + ')' : '')
+          : (donneesAffichees.matiere ||
+             (reporte ? '' : 'Khôlle'));
+
+      html +=
+        '<article class="billet' +
+        (isMathsTB1 ? ' maths-tb1' : '') +
+        (reporte ? ' reporte' : '') +
+        '" style="border-left-color:' + couleurAccent + ';">' +
+
+        (reporte
+          ? '<span class="tampon-reporte">Reportée</span>'
+          : '') +
+
+        '<div class="billet-heure" style="background:' +
+        couleurAccent + ';">' +
+        '<span class="jour">' + d.jour + '</span>' +
+        '<span class="date">' + d.numero + '</span>' +
+        '<span class="mois">' + d.mois + '</span>' +
+        '</div>' +
+
+        '<div class="billet-corps">' +
+
+        (titrePrincipal
+          ? '<div class="billet-matiere">' +
+            escapeHtml(titrePrincipal) +
+            '</div>'
+          : '') +
+
+        '<div class="billet-details">' +
+
+        (donneesAffichees.horaireLigne
+          ? '<span>🕐 ' +
+            escapeHtml(
+              donneesAffichees.horaireLigne
+                .replace(
+                  /^(lundi|mardi|mercredi|jeudi|vendredi|samedi)\s*/i,
+                  ''
+                )
+                .trim()
+            ) +
+            '</span>'
+          : '') +
+
+        (!reporte && item.duree
+          ? '<span>⏱ ' + formatDuree(item.duree) + '</span>'
+          : '') +
+
+        (donneesAffichees.salle
+          ? '<span>📍 ' +
+            escapeHtml(donneesAffichees.salle) +
+            '</span>'
+          : '') +
+
+        (afficherClasseGroupe && donneesAffichees.matiere
+          ? '<span>' +
+            escapeHtml(donneesAffichees.matiere) +
+            '</span>'
+          : '') +
+
+        (!afficherClasseGroupe &&
+         afficherNomProf &&
+         donneesAffichees.nom
+          ? '<span>👤 ' +
+            escapeHtml(
+              (donneesAffichees.civilite
+                ? donneesAffichees.civilite + ' '
+                : '') +
+              donneesAffichees.nom
+            ) +
+            '</span>'
+          : '') +
+
+        '</div>' +
+
+        (!reporte &&
+         isMathsTB1 &&
+         !item.duree
+          ? '<span class="badge-maths">Durée variable selon la semaine</span>'
+          : '') +
+
+        '</div>' +
+        '</article>';
     }
 
-    // Mode prof (afficherClasseGroupe=true) : couleur par classe, classe+groupe en titre.
-    // Mode élève (afficherClasseGroupe=false) : couleur par matière, matière en titre.
-    const couleurAccent = afficherClasseGroupe ? couleurClasse(item.classe) : couleurMatiere(item.matiere);
+    zoneResultats.innerHTML = html;
 
-    // Pour un créneau reporté, on réanalyse le texte UNE FOIS la mention "reportée"
-    // retirée : si la case ne contenait qu'une initiale ("M. L"), seul le nom
-    // s'affichera ; si elle contenait un créneau complet, matière/horaire/salle
-    // s'afficheront normalement, avec la même mise en forme qu'un billet standard
-    // (seule l'opacité du billet + le tampon signalent qu'il est reporté).
-    const donneesAffichees = reporte ? (analyserCreneau(nettoyerTexteReporte(item.brut)) || {}) : item;
-    const nomsGroupe = options.nomsGroupesParClasse && item.classe
-      ? options.nomsGroupesParClasse[item.classe] && options.nomsGroupesParClasse[item.classe][item.groupeIndex]
-      : null;
-    const titrePrincipal = afficherClasseGroupe && item.classe
-      ? item.classe + ' – Groupe ' + item.groupeIndex + (nomsGroupe ? ' (' + nomsGroupe + ')' : '')
-      : (donneesAffichees.matiere || (reporte ? '' : 'Khôlle'));
+    const bouton = document.getElementById('btn-semaines-passees');
 
-    html += '<article class="billet' + (isMathsTB1 ? ' maths-tb1' : '') + (reporte ? ' reporte' : '') +
-      '" style="border-left-color:' + couleurAccent + ';">' +
-      (reporte ? '<span class="tampon-reporte">Reportée</span>' : '') +
-      '<div class="billet-heure" style="background:' + couleurAccent + ';"><span class="jour">' + d.jour + '</span>' +
-      '<span class="date">' + d.numero + '</span>' +
-      '<span class="mois">' + d.mois + '</span></div>' +
-      '<div class="billet-corps">' +
-      (titrePrincipal ? '<div class="billet-matiere">' + escapeHtml(titrePrincipal) + '</div>' : '') +
-      '<div class="billet-details">' +
-      (donneesAffichees.horaireLigne
-  ? '<span>🕐 ' + escapeHtml(
-      donneesAffichees.horaireLigne
-        .replace(/^(lundi|mardi|mercredi|jeudi|vendredi|samedi)\s*/i, '')
-        .trim()
-    ) + '</span>'
-  : '') +
-      (!reporte && item.duree ? '<span>⏱ ' + formatDuree(item.duree) + '</span>' : '') +
-      (donneesAffichees.salle ? '<span>📍 ' + escapeHtml(donneesAffichees.salle) + '</span>' : '') +
-      (afficherClasseGroupe && donneesAffichees.matiere ? '<span>' + escapeHtml(donneesAffichees.matiere) + '</span>' : '') +
-      (!afficherClasseGroupe && afficherNomProf && donneesAffichees.nom
-        ? '<span>👤 ' + escapeHtml((donneesAffichees.civilite ? donneesAffichees.civilite + ' ' : '') + donneesAffichees.nom) + '</span>'
-        : '') +
-      '</div>' +
-      (!reporte && isMathsTB1 && !item.duree ? '<span class="badge-maths">Durée variable selon la semaine</span>' : '') +
-      '</div>' +
-      '</article>';
-  }
-  zoneResultats.innerHTML = html;
+    if (bouton) {
+      bouton.addEventListener('click', () => {
+        afficherAnciens = !afficherAnciens;
+        construireAffichage();
 
-  // Défilement automatique vers la semaine en cours/à venir, pour que l'élève
-  // n'ait pas à chercher en remontant tout le planning depuis la rentrée.
-  if (idSemaineCourante) {
-    const cible = document.getElementById(idSemaineCourante);
-    if (cible) {
-      // Léger délai pour laisser le navigateur terminer le rendu avant de défiler.
-      setTimeout(() => cible.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+        // Lorsque l'on réaffiche les anciennes semaines, on revient en haut
+        // de la zone des résultats plutôt que de perturber la position actuelle.
+        if (afficherAnciens) {
+          zoneResultats.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+      });
+    }
+
+    // Défilement automatique vers la semaine en cours uniquement lors du
+    // premier affichage normal.
+    if (!afficherAnciens && idSemaineCourante) {
+      const cible = document.getElementById(idSemaineCourante);
+
+      if (cible) {
+        setTimeout(() => {
+          cible.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }, 50);
+      }
     }
   }
+
+  construireAffichage();
 }
 
 /**
