@@ -121,7 +121,7 @@ function formatHeuresParLot(heures) {
   return heures.map((h, i) => 'Lot ' + (i + 1) + ' : ' + formatDuree(h)).join(' · ');
 }
 
-const N_GROUPES = { TB1: 8, TB2: 12, BCPST1: 12, BCPST2: 10 };
+const N_GROUPES = { TB1: 8, TB2: 7, BCPST1: 12, BCPST2: 10 };
 
 let _compteurCallback = 0;
 
