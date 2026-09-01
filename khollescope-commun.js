@@ -874,7 +874,7 @@ function initBandeauInstallation(nomAppCourt) {
  * n'apparaît qu'à l'ouverture de l'app, pas en tâche de fond.
  */
 function verifierModificationsRecentes(zoneResultats, items, cleStockage) {
-  const aujourdHui = new Date();
+  const aujourdHui = new Date(2026, 8, 21);
   aujourdHui.setHours(0, 0, 0, 0);
   const limite = new Date(aujourdHui.getTime());
   limite.setDate(limite.getDate() + 21); // 3 semaines
