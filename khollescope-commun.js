@@ -167,7 +167,10 @@ function chargerOnglet(nomOnglet) {
 	const url = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
 	  '/gviz/tq?tqx=responseHandler:' + nomCallback +
 	  '&headers=0' +
-	  '&sheet=' + encodeURIComponent(nomOnglet);
+	  '&sheet=' + encodeURIComponent(nomOnglet) +
+	  '&_=' + Date.now(); // anti-cache : évite qu'un navigateur mobile (ou le
+	  // service worker de la PWA) ne resserve indéfiniment une ancienne réponse
+	  // gviz au lieu d'interroger à nouveau Google Sheets.
 
     const script = document.createElement('script');
     script.id = idScript;
