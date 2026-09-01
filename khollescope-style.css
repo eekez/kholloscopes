@@ -388,3 +388,21 @@
   @media (min-width: 640px) {
     .billet-heure { min-width: 92px; }
   }
+  
+ .btn-semaines-passees {
+  display: block;
+  width: 100%;
+  margin: 0 0 1rem;
+  padding: 0.7rem 1rem;
+  border: 1px solid #d5d0c8;
+  border-radius: 8px;
+  background: transparent;
+  color: #5f5a52;
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.btn-semaines-passees:hover {
+  background: #f3f1ed;
+}
