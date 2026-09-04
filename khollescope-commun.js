@@ -286,9 +286,11 @@ function parserDateFr(s) {
   }
 
   const m2 = s.match(/^(\d{1,2})\/(\d{1,2})$/);
-  if (m2) {
-    return new Date(2026, parseInt(m2[2], 10) - 1, parseInt(m2[1], 10));
-  }
+	if (m2) {
+		const mois = parseInt(m2[2], 10);
+		const annee = mois >= 8 ? 2026 : 2027;
+		return new Date(annee, mois - 1, parseInt(m2[1], 10));
+	  }
 
   const m3 = s.match(/^Date\((\d{4}),(\d{1,2}),(\d{1,2})/);
   if (m3) return new Date(parseInt(m3[1], 10), parseInt(m3[2], 10), parseInt(m3[3], 10));
