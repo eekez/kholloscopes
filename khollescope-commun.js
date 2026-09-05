@@ -116,6 +116,66 @@ function extraireNomsGroupes(rows) {
   return noms;
 }
 
+/**
+ * Extrait, à partir de la ligne d'en-tête (ligne 1, index 0) d'un onglet élève,
+ * le "sous-groupe informatique" (Gr1 ou Gr2) de chaque groupe de khôlles, quand
+ * il est indiqué entre parenthèses dans l'intitulé de la colonne (ex : "Groupe 1
+ * (Gr1)"). Les groupes sans mention (ex : "Groupe 8") sont simplement absents du
+ * résultat. Renvoie un objet { groupeIndex: "Gr1" | "Gr2", ... }.
+ */
+function extraireSousGroupeInformatique(rows) {
+  const resultat = {};
+  const ligneEntete = rows[0];
+  if (!ligneEntete) return resultat;
+
+  for (let c = 4; c < ligneEntete.length; c++) {
+    const texte = (ligneEntete[c] || '').toString();
+    const correspondance = texte.match(/\(Gr\s*(\d+)\)/i);
+    if (correspondance) {
+      resultat[c - 4 + 1] = 'Gr' + correspondance[1];
+    }
+  }
+
+  return resultat;
+}
+
+/**
+ * Formate une date en clé "AAAA-MM-JJ" (utilisée pour indexer les informations
+ * par semaine, indépendamment du fuseau horaire ou du format d'affichage).
+ */
+function formaterCleDate(date) {
+  return date.getFullYear() + '-' +
+    String(date.getMonth() + 1).padStart(2, '0') + '-' +
+    String(date.getDate()).padStart(2, '0');
+}
+
+/**
+ * Extrait, à partir d'une colonne dédiée de l'onglet (ex : colonne Q en BCPST2,
+ * "Quel groupe a informatique à 15h30 le jeudi ?"), le sous-groupe (Gr1 ou Gr2)
+ * concerné pour chaque semaine. La valeur est lue sur la ligne où figure la date
+ * du lundi (colonne B), quelle que soit sa position dans le bloc de la semaine.
+ * Renvoie un objet { "AAAA-MM-JJ": "Gr1" | "Gr2", ... } indexé par le lundi de
+ * chaque semaine.
+ */
+function extraireInformatiqueParSemaine(rows, colonneIndex) {
+  const resultat = {};
+
+  for (let r = 0; r < rows.length; r++) {
+    const row = rows[r];
+    if (!row) continue;
+
+    const dateLigne = parserDateFr(row[1]);
+    if (!dateLigne) continue;
+
+    const valeur = (row[colonneIndex] || '').toString().trim();
+    if (/^Gr\s*\d+$/i.test(valeur)) {
+      resultat[formaterCleDate(dateLigne)] = valeur.replace(/\s+/g, '');
+    }
+  }
+
+  return resultat;
+}
+
 function formatHeuresParLot(heures) {
   if (!heures) return '';
   return heures.map((h, i) => 'Lot ' + (i + 1) + ' : ' + formatDuree(h)).join(' · ');
@@ -654,9 +714,24 @@ function afficherResultats(zoneResultats, items, sousTitre, options) {
           semaineCouranteTrouvee = true;
         }
 
+        let infoInformatique = '';
+        if (options.informatiqueParSemaine && options.sousGroupeInformatique) {
+          const grDeLaSemaine =
+            options.informatiqueParSemaine[formaterCleDate(debutDeSemaine)];
+          if (grDeLaSemaine) {
+            const horaire = grDeLaSemaine === options.sousGroupeInformatique
+              ? '15h30'
+              : '16h30';
+            infoInformatique =
+              ' <span class="entete-semaine-info">Informatique, jeudi à ' +
+              horaire + '</span>';
+          }
+        }
+
         html +=
           '<div class="entete-semaine"' + idAttribut + '>' +
           escapeHtml(item.libelleSemaine) +
+          infoInformatique +
           '</div>';
 
         derniereSemaineAffichee = item.libelleSemaine;

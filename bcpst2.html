@@ -87,8 +87,19 @@
     try {
       const rows = await chargerOnglet(ONGLETS[CLASSE_FIXE]);
       const items = extraireCreneaux(rows, CLASSE_FIXE, { colonneIndex: 4 + groupe - 1 });
+
+      // Colonne Q (index 16) : sous-groupe (Gr1/Gr2) ayant informatique à 15h30
+      // le jeudi cette semaine-là (sinon 16h30 par défaut pour l'autre sous-groupe).
+      const sousGroupesInformatique = extraireSousGroupeInformatique(rows);
+      const informatiqueParSemaine = extraireInformatiqueParSemaine(rows, 16);
+
       afficherResultats(zoneResultats, items, CLASSE_FIXE + ' — Groupe ' + groupe,
-        { afficherClasseGroupe: false, afficherNomProf: true });
+        {
+          afficherClasseGroupe: false,
+          afficherNomProf: true,
+          sousGroupeInformatique: sousGroupesInformatique[groupe],
+          informatiqueParSemaine: informatiqueParSemaine,
+        });
       verifierModificationsRecentes(zoneResultats, items, 'khollescope_vu_' + CLASSE_FIXE + '_' + groupe);
     } catch (e) {
       afficherErreur(zoneResultats, 'Impossible de charger le planning pour le moment. Vérifiez votre connexion, ou réessayez plus tard.');
