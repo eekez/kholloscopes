@@ -406,3 +406,11 @@
 .btn-semaines-passees:hover {
   background: #f3f1ed;
 }
+
+
+.entete-semaine-info {
+  font-size: 0.8em;
+  font-weight: 400;
+  opacity: 0.75;
+  margin-left: 0.5em;
+}
